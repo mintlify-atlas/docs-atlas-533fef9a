@@ -1,0 +1,167 @@
+---
+title: "Troubleshooting"
+description: "Solutions for common issues with Flashcard AI"
+---
+
+## Scanning issues
+
+<AccordionGroup>
+
+  <Accordion title='"No API keys configured" error'>
+    **Cause:** No Gemini API keys have been added to the app.
+
+    **Fix:** Open **Settings** → add at least one API key → click **Validate** to test it. The key must start with `AIza`. See [Gemini API keys](/configuration/gemini-api-keys) for instructions.
+  </Accordion>
+
+  <Accordion title="Scan completes but 0 cards are extracted">
+    **Possible causes:**
+    - Images are too blurry, low-resolution, or rotated
+    - Images contain only diagrams, charts, or title text (no question text)
+    - The wrong folder was selected
+
+    **Fix:** Ensure images contain clear question text. Test with a single high-quality image first. Blurry or very small images produce unreliable results.
+  </Accordion>
+
+  <Accordion title="Model not found / 404 error during scan">
+    **Cause:** The primary model (`gemini-2.5-flash`) may not be available in your region or at your API key tier.
+
+    **Fix:** The app automatically falls back through the model list: `gemini-2.5-flash` → `gemini-2.5-flash-lite` → `gemini-3-flash-preview` → etc. If all models fail, check your API key validity and regional availability at [ai.google.dev](https://ai.google.dev).
+  </Accordion>
+
+  <Accordion title="Scanning is very slow">
+    **Cause:** A single API key processes batches sequentially with a ~7.5-second delay between requests.
+
+    **Fix:** Add 3 or more API keys in Settings to enable parallel scan mode. Each additional key reduces the per-key delay proportionally. With 3 keys the delay drops to ~2.5 seconds per request.
+  </Accordion>
+
+  <Accordion title="Scan stops mid-way and does not resume">
+    **Cause:** A Stop button was pressed, or the process was killed.
+
+    **Fix:** Re-run the scan on the same folder. Already-extracted cards are not duplicated — start a new scan and merge or review the results. Consider using the Dedup feature to remove near-duplicate cards.
+  </Accordion>
+
+</AccordionGroup>
+
+## Sync issues
+
+<AccordionGroup>
+
+  <Accordion title='"Not authenticated" error during sync'>
+    **Cause:** You are not signed in to Google Drive in the app.
+
+    **Fix:** Click **Sign in with Google** in the app. Complete the OAuth flow in the browser window that opens. After signing in, a `token.json` file is saved locally for future sessions.
+  </Accordion>
+
+  <Accordion title="Sync fails with a network error">
+    **Cause:** Your device is offline or a firewall is blocking Google API traffic.
+
+    **Fix:** Check your internet connection. Ensure that `*.googleapis.com` and `accounts.google.com` are not blocked by firewall or proxy rules.
+  </Accordion>
+
+  <Accordion title="A deck was overwritten after sync">
+    **Cause:** The other device had a newer `updated_at` timestamp for that deck — Smart Merge always keeps the most recently modified version.
+
+    **Fix:** This is expected behavior. To avoid conflicts, sync before editing a deck on a second device. If data was lost, check if you have a local backup (`decks.json`) before it was overwritten.
+
+    <Note>
+      Smart Merge compares timestamps per-deck. Edits on different decks on different devices are never in conflict.
+    </Note>
+  </Accordion>
+
+  <Accordion title="token.json expired or corrupt">
+    **Cause:** The stored OAuth token has expired or become invalid (e.g. you revoked access in Google Account settings).
+
+    **Fix:** Delete `token.json` from the app data directory, then sign in again.
+
+    ```bash
+    # Desktop Python — default location
+    del token.json
+    ```
+
+    <Warning>
+      Never commit `token.json` to version control. It is excluded by `.gitignore` in the repo.
+    </Warning>
+  </Accordion>
+
+</AccordionGroup>
+
+## Build issues
+
+<AccordionGroup>
+
+  <Accordion title="build_exe.bat fails for the .NET app">
+    **Cause:** .NET 8 SDK is not installed, or the build tools path is not in `PATH`.
+
+    **Fix:**
+    1. Install the .NET 8 SDK from [dotnet.microsoft.com/download](https://dotnet.microsoft.com/download)
+    2. Verify with `dotnet --version` — should show `8.x.x`
+    3. Re-run `build_exe.bat` from the `appDotNet/` directory
+  </Accordion>
+
+  <Accordion title="PyInstaller EXE fails to launch after build">
+    **Cause:** Missing Python dependencies bundled by PyInstaller, or antivirus software quarantining the EXE.
+
+    **Fix:**
+    - Run the EXE from a Command Prompt to see error output: `FlashcardAI-Python-v1.0.4.exe`
+    - Add an antivirus exception for the output EXE if it is being quarantined
+    - Rebuild with `python app.py` first to verify the app works in development before packaging
+  </Accordion>
+
+  <Accordion title="Expo / React Native build fails">
+    **Cause:** Outdated Node.js, missing Android SDK, or stale dependencies.
+
+    **Fix:**
+    ```bash
+    # Check Node.js version (needs 18+)
+    node --version
+
+    # Clear and reinstall dependencies
+    cd appAndroid
+    rm -rf node_modules
+    npm install
+
+    # Run Expo doctor to diagnose issues
+    npx expo doctor
+    ```
+
+    Ensure `ANDROID_HOME` is set to your Android SDK path if building locally.
+  </Accordion>
+
+</AccordionGroup>
+
+## Mobile issues
+
+<AccordionGroup>
+
+  <Accordion title="Cannot import decks.json on Android">
+    **Cause:** File permissions or the file is in a location not accessible to the document picker.
+
+    **Fix:**
+    - Move `decks.json` to your **Downloads** folder on the device
+    - Grant the app storage permission when prompted
+    - On Android 13+, grant **Files and media** permission in device Settings → Apps → Flashcard AI → Permissions
+  </Accordion>
+
+  <Accordion title="App shows no decks after importing a file">
+    **Cause:** The file may not be valid JSON, or it was not exported from Flashcard AI (wrong format).
+
+    **Fix:**
+    - Verify the file is valid JSON (open it in a text editor — it should start with `[`)
+    - Ensure it was exported from the Flashcard AI desktop app, not a manually edited file
+    - Check that the file is named `decks.json` and contains a JSON array at the root level
+  </Accordion>
+
+  <Accordion title="Swipe gestures conflict with scrolling on long cards">
+    The mobile app uses smart scrolling to resolve conflicts between swipe-to-score gestures and vertical scroll. If you experience issues, ensure you are running the latest version of the app (v1.0.4+).
+  </Accordion>
+
+</AccordionGroup>
+
+<CardGroup cols={2}>
+  <Card title="FAQ" icon="circle-question" href="/reference/faq">
+    Answers to common questions about Flashcard AI
+  </Card>
+  <Card title="Gemini API keys" icon="key" href="/configuration/gemini-api-keys">
+    Set up and manage your Gemini API keys
+  </Card>
+</CardGroup>

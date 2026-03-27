@@ -1,0 +1,121 @@
+---
+title: "SyncService"
+description: "Google Drive synchronization service for decks and quiz sessions"
+---
+
+`SyncService` keeps local `decks.json` and `quiz_sessions.json` files in sync with Google Drive AppData using a timestamp-based smart merge. It requires a valid `GoogleAuthService` instance with active credentials.
+
+## Constructor
+
+### `SyncService(auth_service)`
+
+<ParamField path="auth_service" type="GoogleAuthService" required>
+  An authenticated `GoogleAuthService` instance. The service uses it to obtain OAuth credentials and build the Drive API client on first use.
+</ParamField>
+
+```python
+from services.auth_service import GoogleAuthService
+from services.sync_service import SyncService
+
+auth = GoogleAuthService()
+sync = SyncService(auth)
+```
+
+## Public methods
+
+### `sync_decks() → Tuple[bool, str]`
+
+Synchronize the local `decks.json` with the copy stored in Google Drive AppData.
+
+<ResponseField name="(bool, str)" type="Tuple[bool, str]">
+  `(True, "Đồng bộ Decks thành công")` on success, or `(False, error_message)` on failure.
+</ResponseField>
+
+**Smart merge algorithm:**
+
+<Steps>
+  <Step title="Download remote file">
+    Looks up `decks.json` in the Drive AppData folder. Downloads and parses it if found.
+  </Step>
+  <Step title="Load local file">
+    Reads the local `decks.json` via `load_decks()` and builds a lookup by `deck_id`.
+  </Step>
+  <Step title="Merge by timestamp">
+    For each deck that exists in both local and remote, compares the `updated_at` field. The newer version wins. If timestamps are equal, the local copy is kept.
+  </Step>
+  <Step title="Handle remote-only and local-only decks">
+    Decks that exist only on Drive are pulled down locally. Decks that exist only locally are retained as-is.
+  </Step>
+  <Step title="Preserve local image paths">
+    When a remote deck wins the merge, local `image_path` values are re-injected into the remote deck's cards by `card_id`. Drive does not store image files, only metadata.
+  </Step>
+  <Step title="Save and upload">
+    Writes the merged list to local `decks.json` without bumping `updated_at` timestamps, then uploads the merged file back to Drive.
+  </Step>
+</Steps>
+
+### `sync_quiz_sessions() → Tuple[bool, str]`
+
+Synchronize `quiz_sessions.json` with Google Drive AppData using the same timestamp-based merge strategy.
+
+<ResponseField name="(bool, str)" type="Tuple[bool, str]">
+  `(True, "Đồng bộ Sessions thành công")` on success, or `(False, error_message)` on failure.
+</ResponseField>
+
+<Note>
+  Unlike deck sync, quiz session merge does not need to preserve image paths. The newer `updated_at` value for each `deck_id` key wins outright.
+</Note>
+
+### `perform_full_sync() → Tuple[bool, str]`
+
+Run `sync_decks` followed by `sync_quiz_sessions` in sequence. Returns immediately on the first failure.
+
+<ResponseField name="(bool, str)" type="Tuple[bool, str]">
+  `(True, "Đồng bộ thành công")` if both steps succeed. Returns the failure tuple from whichever step failed first.
+</ResponseField>
+
+<Warning>
+  Returns `(False, "Chưa đăng nhập Google Drive")` if `auth_service.is_logged_in()` is `False` before attempting either sync step.
+</Warning>
+
+## Error codes
+
+| Condition | Returned message |
+|---|---|
+| No internet connection | `"Không có kết nối mạng"` |
+| Drive API HTTP error | `"Lỗi Google Drive: <status_code>"` |
+| Not authenticated | `"Chưa đăng nhập Google Drive"` |
+| Other exception | `"Lỗi: <exception_message>"` |
+
+Internet connectivity is checked by attempting a TCP connection to Google DNS (`8.8.8.8:53`) with a 3-second timeout before any Drive API call is made.
+
+## Usage example
+
+```python
+from services.auth_service import GoogleAuthService
+from services.sync_service import SyncService
+
+auth = GoogleAuthService()
+sync = SyncService(auth)
+
+success, message = sync.perform_full_sync()
+if success:
+    print("Sync complete")
+else:
+    print(f"Sync failed: {message}")
+```
+
+To sync only decks (for example, after saving a new deck but before closing the app):
+
+```python
+success, message = sync.sync_decks()
+```
+
+<CardGroup cols={2}>
+  <Card title="GeminiService" icon="robot" href="/reference/gemini-service">
+    Extract flashcards from exam images using Gemini AI.
+  </Card>
+  <Card title="ExportService" icon="file-export" href="/reference/export-service">
+    Export decks to Quizlet-compatible text files.
+  </Card>
+</CardGroup>

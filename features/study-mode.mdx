@@ -1,0 +1,113 @@
+---
+title: "Study mode"
+description: "Review flashcards with keyboard shortcuts and track your mastery status"
+---
+
+## Overview
+
+Study mode presents cards one at a time. You flip each card to reveal the answer, then score yourself to track which cards you have mastered and which still need work. A color-coded status system gives you an at-a-glance view of your progress across the entire deck.
+
+## Card status system
+
+Every card carries a numeric status that controls its color in the progress indicator:
+
+| Status | Color | Meaning |
+|--------|-------|---------|
+| `0` | Gray | Unseen — not yet reviewed |
+| `1` | Orange | Learning — marked wrong or still practicing |
+| `2` | Green | Mastered — marked correct |
+
+Statuses are persisted in `decks.json` so your progress is saved automatically after each scoring action.
+
+## Keyboard shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Space` | Flip card to show/hide answer |
+| `→` Right arrow | Mark card as **Mastered** (green, status 2) |
+| `←` Left arrow | Mark card as **Learning/Wrong** (orange, status 1) |
+| `Ctrl+Z` / Undo button | Undo the last scoring action |
+
+<Tip>
+Use the keyboard exclusively for the fastest review experience. You can flip and score a card in under a second without touching the mouse.
+</Tip>
+
+## Study workflow
+
+<Steps>
+  <Step title="Open a deck">
+    Select a deck from the deck list and launch study mode. Cards begin in their current status; new decks start all gray.
+  </Step>
+  <Step title="Flip the card">
+    Press `Space` to reveal the answer side of the card. The question is shown first; the answer options and correct answer are hidden until you flip.
+  </Step>
+  <Step title="Score yourself">
+    Press `→` if you answered correctly (card turns green) or `←` if you got it wrong or need more practice (card turns orange).
+  </Step>
+  <Step title="Continue or undo">
+    The next card advances automatically after scoring. Press the Undo button or `Ctrl+Z` to reverse the last scoring action if you made a mistake.
+  </Step>
+  <Step title="Track progress">
+    Colored dots at the top of the screen represent every card in the deck. Watch the gray dots turn orange and green as you work through the deck.
+  </Step>
+</Steps>
+
+## Progress tracking
+
+The progress bar and colored dot indicators update in real time as you score cards. You can see at a glance:
+
+- How many cards are still unseen (gray)
+- How many are in active learning (orange)
+- How many are mastered (green)
+
+Filtering lets you study only cards in a specific status — for example, show only orange cards for a focused re-review session without seeing cards you've already mastered.
+
+## Notes and inferred-answer warnings
+
+Each card has a notes field visible during study. For cards where Gemini inferred the correct answer rather than reading it from an explicit clue in the image, the notes field is pre-populated with a warning:
+
+> ⚠ Đáp án do AI suy luận (không có đáp án rõ trong ảnh)
+
+<Warning>
+Pay extra attention to cards with this warning. The answer was reasoned by Gemini and may not match the original exam key. Verify and correct these cards before using the deck for graded practice.
+</Warning>
+
+You can edit the notes field directly from study mode to add your own remarks or corrections.
+
+## Filtering by status
+
+Use the status filter to focus your session:
+
+- **All** — show every card in deck order
+- **Gray (unseen)** — first-pass review of new material
+- **Orange (learning)** — re-drill cards you got wrong
+- **Green (mastered)** — spot-check cards you think you know
+
+<Tip>
+For exam preparation, filter to orange cards the day before and run through them until the orange count reaches zero.
+</Tip>
+
+## Frequently asked questions
+
+<AccordionGroup>
+  <Accordion title="Does study mode affect quiz mode scores?">
+    No. Card status (gray/orange/green) is set by study mode. Quiz mode tracks correct and wrong counts in a separate `QuizSession` object and does not write to card status.
+  </Accordion>
+  <Accordion title="Can I reset all card statuses?">
+    Yes. Selecting "Reset progress" from the deck options resets every card status back to 0 (gray) without deleting the cards.
+  </Accordion>
+  <Accordion title="Is progress synced across devices?">
+    Yes, when you trigger a cloud sync. Card statuses are stored in `decks.json`, which is included in the Smart Merge sync via Google Drive.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quiz mode" icon="circle-check" href="/features/quiz-mode">
+    Test yourself with timed multiple-choice questions and get a scored result.
+  </Card>
+  <Card title="Cloud sync" icon="cloud" href="/features/cloud-sync">
+    Sync your mastery progress across devices via Google Drive.
+  </Card>
+</CardGroup>

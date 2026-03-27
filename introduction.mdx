@@ -1,0 +1,77 @@
+---
+title: "Introduction"
+description: "Welcome to Flashcard AI — the multi-platform learning ecosystem powered by Google Gemini AI."
+---
+
+Flashcard AI automates the entire process of creating study materials. Upload folders of images, PDFs, or video files and let Google Gemini extract the core concepts into interactive flashcard decks — no manual typing required.
+
+<CardGroup cols={2}>
+  <Card title="Desktop Quickstart" icon="desktop" href="/quickstart-desktop">
+    Set up the Windows desktop app and scan your first deck in minutes
+  </Card>
+  <Card title="Mobile Quickstart" icon="mobile" href="/quickstart-mobile">
+    Import decks on Android and start studying on the go
+  </Card>
+  <Card title="AI Scanning" icon="wand-magic-sparkles" href="/features/ai-scanning">
+    Learn how Gemini extracts questions from images, PDFs, and videos
+  </Card>
+  <Card title="Cloud Sync" icon="cloud" href="/features/cloud-sync">
+    Keep decks in sync across all your devices via Google Drive
+  </Card>
+</CardGroup>
+
+## What is Flashcard AI?
+
+Flashcard AI is a three-part ecosystem:
+
+- **Desktop app (.NET 8 / WPF)** — The primary control center for Windows. Scan image folders, manage decks, study, quiz, and sync to the cloud.
+- **Desktop app (Python)** — A legacy Python/CustomTkinter version with the same scanning and deck management features.
+- **Mobile app (Android)** — A React Native companion app for studying and quizzing on your phone with gesture controls.
+
+All three clients share the same `decks.json` data format and sync through Google Drive AppData.
+
+## How it works
+
+<Steps>
+  <Step title="Scan your materials">
+    Point the desktop app at a folder of images (lecture slides, book pages, exam screenshots) or a video file. Flashcard AI batches them into PDFs and sends them to Google Gemini for extraction.
+  </Step>
+  <Step title="Review your deck">
+    Gemini returns structured flashcards with questions, answer options, and correct answers. Cards flagged as AI-inferred are marked so you can review them.
+  </Step>
+  <Step title="Study and quiz">
+    Use Study Mode to flip cards and self-score, or Quiz Mode to practice with single and multiple-choice questions. Sessions are automatically saved so you can pick up where you left off.
+  </Step>
+  <Step title="Sync and export">
+    Sync your decks to Google Drive so they're available on all your devices. Export to Quizlet-compatible `.txt` files to share or import into other study tools.
+  </Step>
+</Steps>
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="AI OCR scanning" icon="brain">
+    Extract flashcards from images, PDFs, and MP4/AVI videos using Google Gemini 2.5
+  </Card>
+  <Card title="Multi-key rotation" icon="key">
+    Add multiple Gemini API keys to distribute load and avoid rate limits automatically
+  </Card>
+  <Card title="Smart Merge sync" icon="rotate">
+    Google Drive sync uses `updated_at` timestamps to always preserve the newest version of each deck
+  </Card>
+  <Card title="Study Mode" icon="graduation-cap">
+    Keyboard-driven card review with Space to flip, arrow keys to score, and Undo support
+  </Card>
+  <Card title="Quiz Mode" icon="list-check">
+    Single and multiple-choice practice with session save/resume and font zoom
+  </Card>
+  <Card title="Quizlet export" icon="file-export">
+    Export decks in four formats — simple, full, compact, and safe — for Quizlet import
+  </Card>
+  <Card title="Duplicate detection" icon="copy">
+    Automatically find near-duplicate questions using n-gram shingling and Jaccard similarity
+  </Card>
+  <Card title="Cross-platform" icon="layer-group">
+    Windows desktop (.NET 8), Python desktop, and Android mobile all share the same deck format
+  </Card>
+</CardGroup>

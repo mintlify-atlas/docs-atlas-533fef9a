@@ -1,0 +1,91 @@
+---
+title: "Build the Python desktop app"
+description: "Package the Python/CustomTkinter desktop app as a standalone Windows EXE with PyInstaller"
+---
+
+<Note>
+  The Python app is the **legacy version** of the Flashcard AI desktop client. The [.NET 8 app](/building/desktop-dotnet) is the recommended production version and receives active development. Use the Python app only if you have a specific need for it.
+</Note>
+
+## Prerequisites
+
+- **Windows**
+- **Python 3.10+** — [download here](https://www.python.org/downloads/)
+- **pip** (included with Python)
+- **Node.js** — used by the build script to read the version from `package.json`
+
+## Libraries
+
+The Python app uses these core libraries:
+
+| Library | Purpose |
+|---|---|
+| `CustomTkinter` | Modern UI framework |
+| `google-genai` | Gemini AI integration |
+| `Pillow` | Image handling |
+| `google-api-python-client` | Google Drive API |
+
+## Run in development
+
+```bash
+cd appPython
+pip install -r requirements.txt
+python app.py
+```
+
+## Build a standalone EXE
+
+<Steps>
+  <Step title="Navigate to the appPython directory">
+    ```bash
+    cd appPython
+    ```
+  </Step>
+
+  <Step title="Run the build script">
+    ```bash
+    build_exe.bat
+    ```
+
+    The script first ensures PyInstaller is available:
+
+    ```bash
+    pip install pyinstaller opencv-python
+    ```
+
+    Then it packages the app with:
+
+    ```bash
+    pyinstaller --noconfirm --onefile --windowed --name "FlashcardAI" app.py
+    ```
+
+    | Flag | Effect |
+    |---|---|
+    | `--onefile` | Bundles all Python dependencies into a single EXE |
+    | `--windowed` | Hides the console window at runtime |
+    | `--noconfirm` | Overwrites previous build output without prompting |
+  </Step>
+
+  <Step title="Locate the output">
+    After the build completes, the script renames the output to include the version number. The final file is placed at:
+
+    ```
+    appPython\dist\FlashcardAI-Python-v<version>.exe
+    ```
+
+    The `dist` directory opens automatically when the script finishes.
+  </Step>
+</Steps>
+
+## How PyInstaller bundles the app
+
+PyInstaller analyzes all imports in `app.py`, collects the Python interpreter, your code, and every dependency into a single compressed EXE. When the EXE runs, it extracts its contents to a temporary directory and launches the app — no Python installation is required on the target machine.
+
+<CardGroup cols={2}>
+  <Card title="Build the .NET app" icon="microsoft" href="/building/desktop-dotnet">
+    Build the recommended production Windows desktop app
+  </Card>
+  <Card title="Build the Android app" icon="mobile" href="/building/mobile-android">
+    Build the React Native app as a release APK
+  </Card>
+</CardGroup>

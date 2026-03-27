@@ -1,0 +1,105 @@
+---
+title: "Gemini API keys"
+description: "Add and manage Google Gemini API keys for AI-powered scanning"
+---
+
+Flashcard AI uses the Google Gemini API to extract flashcards from images. You need at least one API key before you can run a scan. Adding multiple keys significantly increases throughput and reduces wait times between requests.
+
+## Get a Gemini API key
+
+<Steps>
+  <Step title="Go to Google AI Studio">
+    Open [ai.google.dev](https://ai.google.dev) and click **Get API key**.
+  </Step>
+  <Step title="Create or select a project">
+    Sign in with your Google account, then create a new project or select an existing one.
+  </Step>
+  <Step title="Generate the key">
+    Click **Create API key**. Copy the key — you won't be able to see it again after closing the dialog.
+  </Step>
+</Steps>
+
+<Tip>
+  A free-tier account gives you enough quota to get started. The free tier is capped at a low requests-per-minute (RPM) limit, so adding more keys (each from a separate Google account) is the most effective way to speed up large scans.
+</Tip>
+
+## Add keys in the desktop app
+
+1. Open the app and go to **Settings**.
+2. Locate the **API Keys** section.
+3. Paste each key on its own line and save.
+
+Keys are displayed as `...last8chars` in the UI so they remain identifiable without being exposed.
+
+<Note>
+  Keys are saved to `settings.json` in the app's directory. This file is excluded from Git via `.gitignore`. Do not commit it or share it. Treat your API keys like passwords.
+</Note>
+
+## How multi-key rotation works
+
+When you add more than one key, the app distributes requests across all keys in a round-robin pattern. Each request picks the next key in the list, cycling back to the start.
+
+**Rate-limit handling:** If a key returns a 429 (rate limit exceeded) error, the app automatically switches to the next available key and waits before retrying. Dead or invalid keys detected during the pre-scan validation step are excluded from rotation entirely.
+
+### Request delay formula
+
+To stay within the `SAFE_RPM` limit of 8 requests per minute, the app inserts a delay between requests:
+
+```
+delay = max(60 / SAFE_RPM / n, 1.0)
+```
+
+Where `n` is the number of valid keys. The minimum delay is always 1.0 second.
+
+| Keys | Delay per request |
+| ---- | ----------------- |
+| 1    | 7.5 s             |
+| 2    | 3.75 s            |
+| 3    | 2.5 s             |
+| 5    | 1.5 s             |
+| 8+   | 1.0 s (minimum)   |
+
+## Key validation before scanning
+
+Before a scan starts, the app tests all configured keys in parallel (`validate_keys_parallel`). Each key sends a minimal request to confirm it is live and the model is reachable. Keys that fail are logged and excluded from the scan — they do not cause scan failures.
+
+The app also tracks which key responds last during validation and starts the scan from the key after it, so no single key gets two back-to-back requests at the start.
+
+## Per-key usage tracking
+
+During a scan, the log shows which key number and masked key identifier (`...last8chars`) is handling each request:
+
+```
+📤 Sending 'slide_01.png' | Key 2 [...abc12345] | Model: gemini-2.5-flash
+```
+
+This lets you confirm rotation is working and identify which key hit a rate limit.
+
+## Parallel scan mode
+
+When you provide multiple keys, the app can enter parallel mode. Each key is assigned its own independent pack of images and runs on a separate thread simultaneously. Results are reassembled in the original image order.
+
+<AccordionGroup>
+  <Accordion title="When parallel mode activates">
+    Parallel mode is used when you start a scan with multiple valid keys configured. The images are split into roughly equal packs — one pack per key. Each pack is further divided into sub-batches of up to 50 pages (sent as a single PDF request to Gemini).
+  </Accordion>
+  <Accordion title="Rate limiting in parallel mode">
+    In parallel mode, each worker thread enforces its own rate limit delay between sub-batches (using the full `60 / SAFE_RPM` value, since each thread only has one key). The threads run concurrently, so total wall-clock time is roughly `(total images / n_keys) * per_key_time`.
+  </Accordion>
+</AccordionGroup>
+
+## Best practices
+
+- Add **3 or more keys** for decks larger than 50 images to keep scan times reasonable.
+- Use keys from **separate Google accounts** to maximize independent quota pools.
+- If a scan is slower than expected, check the log for repeated 429 messages — that indicates a key has exhausted its quota for the minute.
+- Rotate keys periodically if you are hitting daily limits.
+
+<CardGroup cols={2}>
+  <Card title="Google Drive setup" icon="hard-drive" href="/configuration/google-drive">
+    Connect Google Drive to sync decks across devices.
+  </Card>
+  <Card title="Data storage" icon="database" href="/configuration/data-storage">
+    Learn where decks, sessions, and settings are stored locally.
+  </Card>
+</CardGroup>

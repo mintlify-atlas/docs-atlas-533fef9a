@@ -1,0 +1,152 @@
+---
+title: "Deck"
+description: "The Deck data model — fields, types, and serialization"
+---
+
+A `Deck` is a named collection of [Flashcard](/reference/flashcard) objects. Decks are the primary unit of persistence — saved to `decks.json` on the desktop and synced to Google Drive and mobile via Smart Merge.
+
+## Fields
+
+<ParamField path="deck_id" type="string" required>
+  Unique identifier for this deck. Auto-generated as a UUID v4 on creation.
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Display name shown in the deck list UI.
+</ParamField>
+
+<ParamField path="cards" type="Flashcard[]" default="[]">
+  Ordered list of [Flashcard](/reference/flashcard) objects belonging to this deck.
+</ParamField>
+
+<ParamField path="created_at" type="string" required>
+  ISO 8601 timestamp of when the deck was first created, e.g. `"2024-03-15T10:30:00.123456"`.
+</ParamField>
+
+<ParamField path="updated_at" type="string" required>
+  ISO 8601 timestamp of the last modification. The Smart Merge sync algorithm uses this field to resolve conflicts — the deck with the newer `updated_at` wins.
+</ParamField>
+
+<ParamField path="source_folder" type="string" default="">
+  Filesystem path to the image folder that was scanned to generate this deck's cards. Empty string for manually created decks.
+</ParamField>
+
+<ParamField path="description" type="string" default="">
+  Optional free-form description of the deck's subject matter.
+</ParamField>
+
+## Properties
+
+### `card_count` → `int`
+
+Computed property. Returns the number of cards currently in `cards`. Equivalent to `len(deck.cards)`.
+
+## Methods
+
+### `to_dict()` → `dict`
+
+Serializes the deck and all nested cards to a JSON-serializable dictionary. Each card in `cards` is serialized via [`Flashcard.to_dict()`](/reference/flashcard#to_dict-dict).
+
+<ResponseField name="deck_id" type="string" required>
+  UUID string.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Display name.
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  ISO 8601 creation timestamp.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string" required>
+  ISO 8601 last-modified timestamp.
+</ResponseField>
+
+<ResponseField name="source_folder" type="string" required>
+  Source image folder path (may be empty string).
+</ResponseField>
+
+<ResponseField name="description" type="string" required>
+  Deck description (may be empty string).
+</ResponseField>
+
+<ResponseField name="cards" type="object[]" required>
+  Array of serialized Flashcard objects.
+
+  <Expandable title="properties">
+    <ResponseField name="card_id" type="string" required>
+      UUID string.
+    </ResponseField>
+    <ResponseField name="question" type="string" required>
+      Question text.
+    </ResponseField>
+    <ResponseField name="options" type="string[]" required>
+      Answer option strings.
+    </ResponseField>
+    <ResponseField name="correct_answers" type="string[]" required>
+      Correct option letter keys.
+    </ResponseField>
+    <ResponseField name="question_type" type="string" required>
+      `"single_choice"`, `"multiple_choice"`, or `"unknown"`.
+    </ResponseField>
+    <ResponseField name="image_path" type="string | null" required>
+      Absolute source image path, or `null`.
+    </ResponseField>
+    <ResponseField name="notes" type="string" required>
+      Card notes text.
+    </ResponseField>
+    <ResponseField name="status" type="integer" required>
+      Progress state: `0` (Unseen), `1` (Learning), `2` (Mastered).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+### `from_dict(data)` → `Deck`
+
+Deserializes a `Deck` from a dictionary. Also deserializes all nested card objects by calling `Flashcard.from_dict()` on each entry in `cards`. Missing fields fall back to defaults (a new UUID is generated for `deck_id` if absent; timestamps default to now).
+
+## JSON example
+
+```json
+{
+  "deck_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "name": "European Capitals",
+  "created_at": "2024-03-15T10:30:00.123456",
+  "updated_at": "2024-03-15T14:22:11.654321",
+  "source_folder": "/Users/alex/scans/geography",
+  "description": "Flashcards generated from geography lecture slides.",
+  "cards": [
+    {
+      "card_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "question": "What is the capital of France?",
+      "options": [
+        "A. London",
+        "B. Paris",
+        "C. Berlin",
+        "D. Madrid"
+      ],
+      "correct_answers": ["B"],
+      "question_type": "single_choice",
+      "image_path": "/Users/alex/scans/geography/slide_03.png",
+      "notes": "",
+      "status": 2
+    }
+  ]
+}
+```
+
+<Note>The `updated_at` field is updated by the application whenever a card is added, edited, or removed. Always preserve its value when round-tripping JSON — overwriting it with an older timestamp will cause Smart Merge to discard newer changes on the next sync.</Note>
+
+## See also
+
+<CardGroup cols={2}>
+  <Card title="Flashcard" icon="rectangle-history" href="/reference/flashcard">
+    The individual card data model stored inside a deck.
+  </Card>
+  <Card title="QuizSession" icon="circle-play" href="/reference/quiz-session">
+    Tracks quiz progress over a deck's cards.
+  </Card>
+</CardGroup>

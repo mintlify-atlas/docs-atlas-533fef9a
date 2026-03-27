@@ -1,0 +1,158 @@
+---
+title: "QuizSession"
+description: "The QuizSession data model — tracking quiz progress and resuming sessions"
+---
+
+A `QuizSession` records the complete state of an in-progress quiz run over a [Deck](/reference/deck). Sessions are persisted to `quiz_sessions.json` so a learner can close the app and resume exactly where they left off. Smart Merge sync uses `updated_at` to resolve multi-device conflicts.
+
+## Fields
+
+<ParamField path="session_id" type="string" required>
+  Unique identifier for this session. Auto-generated as a UUID v4 on creation.
+</ParamField>
+
+<ParamField path="deck_id" type="string" required>
+  The `deck_id` of the [Deck](/reference/deck) this session is running against.
+</ParamField>
+
+<ParamField path="question_order" type="integer[]" required>
+  Shuffled list of card indices (0-based positions into `deck.cards`). The order is fixed at session creation and does not change during the session, ensuring consistent resume behavior.
+</ParamField>
+
+<ParamField path="current_index" type="integer" default="0">
+  The position within `question_order` that the learner is currently on. Advances by one after each answer is submitted. When `current_index >= len(question_order)` the session is complete.
+</ParamField>
+
+<ParamField path="answers" type="object" default="{}">
+  A mapping of `card_id` → list of chosen answer strings, recording what the learner selected for each card. Keys are present only for cards that have been answered.
+
+  <Expandable title="example entry">
+    ```json
+    {
+      "a1b2c3d4-e5f6-7890-abcd-ef1234567890": ["B"],
+      "b2c3d4e5-f6a7-8901-bcde-f12345678901": ["A", "C"]
+    }
+    ```
+  </Expandable>
+</ParamField>
+
+<ParamField path="correct_count" type="integer" default="0">
+  Running total of questions answered correctly in this session.
+</ParamField>
+
+<ParamField path="wrong_count" type="integer" default="0">
+  Running total of questions answered incorrectly in this session.
+</ParamField>
+
+<ParamField path="started_at" type="string" required>
+  ISO 8601 timestamp of when the session was created, e.g. `"2024-03-15T10:30:00.123456"`.
+</ParamField>
+
+<ParamField path="updated_at" type="string" required>
+  ISO 8601 timestamp of the last state change. Updated after every answer submission. Used by Smart Merge to resolve conflicts — the session with the newer `updated_at` wins.
+</ParamField>
+
+## Computed properties
+
+### `is_complete` → `bool`
+
+Returns `True` when `current_index >= len(question_order)`, meaning all questions have been presented. A complete session is not automatically deleted — it can still be inspected for its final score.
+
+### `progress_frac` → `float`
+
+Returns `current_index / len(question_order)` as a float between `0.0` and `1.0`. Returns `0.0` if `question_order` is empty.
+
+<Tip>Use `progress_frac` to drive progress bars in the UI — multiply by 100 for a percentage.</Tip>
+
+## Class methods
+
+### `new_for_deck(deck)` → `QuizSession`
+
+Creates a fresh `QuizSession` for the given `Deck`. The card indices (`0` to `len(deck.cards) - 1`) are shuffled randomly and stored in `question_order`. `current_index`, `correct_count`, and `wrong_count` all start at `0`.
+
+```python
+session = QuizSession.new_for_deck(deck)
+```
+
+---
+
+### `to_dict()` → `dict`
+
+Serializes the session to a JSON-serializable dictionary.
+
+<ResponseField name="session_id" type="string" required>
+  UUID string.
+</ResponseField>
+
+<ResponseField name="deck_id" type="string" required>
+  UUID string referencing the parent deck.
+</ResponseField>
+
+<ResponseField name="question_order" type="integer[]" required>
+  Shuffled card index list.
+</ResponseField>
+
+<ResponseField name="current_index" type="integer" required>
+  Current position in `question_order`.
+</ResponseField>
+
+<ResponseField name="answers" type="object" required>
+  Map of `card_id` → `string[]` recording submitted answers.
+</ResponseField>
+
+<ResponseField name="correct_count" type="integer" required>
+  Number of correct answers so far.
+</ResponseField>
+
+<ResponseField name="wrong_count" type="integer" required>
+  Number of wrong answers so far.
+</ResponseField>
+
+<ResponseField name="started_at" type="string" required>
+  ISO 8601 session creation timestamp.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string" required>
+  ISO 8601 last-update timestamp.
+</ResponseField>
+
+---
+
+### `from_dict(data)` → `QuizSession`
+
+Deserializes a `QuizSession` from a dictionary. Missing fields fall back to defaults (new UUID for `session_id`, empty lists/dicts, zero counts, and current time for timestamps).
+
+## JSON example
+
+```json
+{
+  "session_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+  "deck_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "question_order": [2, 0, 4, 1, 3],
+  "current_index": 3,
+  "answers": {
+    "a1b2c3d4-e5f6-7890-abcd-ef1234567890": ["B"],
+    "b2c3d4e5-f6a7-8901-bcde-f12345678901": ["A", "C"],
+    "c3d4e5f6-a7b8-9012-cdef-ef1234567891": ["D"]
+  },
+  "correct_count": 2,
+  "wrong_count": 1,
+  "started_at": "2024-03-15T10:30:00.123456",
+  "updated_at": "2024-03-15T10:35:42.987654"
+}
+```
+
+In this example the session has a 5-card deck, 3 of the 5 questions have been answered (`current_index: 3`), and `is_complete` would be `False`. `progress_frac` would be `0.6`.
+
+<Note>Only answered cards appear as keys in `answers`. Cards not yet reached are absent from the map.</Note>
+
+## See also
+
+<CardGroup cols={2}>
+  <Card title="Deck" icon="layer-group" href="/reference/deck">
+    The deck a QuizSession runs against.
+  </Card>
+  <Card title="Flashcard" icon="rectangle-history" href="/reference/flashcard">
+    The individual card data model tracked within a session.
+  </Card>
+</CardGroup>

@@ -1,0 +1,117 @@
+---
+title: "Quiz mode"
+description: "Practice with single and multiple-choice questions and track your score"
+---
+
+## Overview
+
+Quiz mode presents cards as interactive multiple-choice questions. Questions are shuffled at the start of each session, your answers are recorded, and your score is saved automatically after every question. You can close the app mid-quiz and resume exactly where you left off.
+
+## Question types
+
+Flashcard AI supports two question types, determined at scan time by Gemini:
+
+| Type | Description | Example |
+|------|-------------|----------|
+| `single_choice` | Select exactly one correct answer | Standard A/B/C/D questions |
+| `multiple_choice` | Select all correct answers | "Select all that apply" questions |
+
+<Note>
+The question type is stored on each card and shown in the quiz UI so you always know whether to expect one answer or multiple.
+</Note>
+
+## Session fields
+
+Every quiz run creates a `QuizSession` object that tracks your progress:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `deck_id` | string | The deck being quizzed |
+| `session_id` | string | Unique ID for this session (UUID) |
+| `question_order` | list of ints | Shuffled card indices |
+| `current_index` | int | Index of the current question in `question_order` |
+| `answers` | dict | `card_id` → chosen answer letters |
+| `correct_count` | int | Running count of correct answers |
+| `wrong_count` | int | Running count of wrong answers |
+| `started_at` | ISO timestamp | When the session was created |
+| `updated_at` | ISO timestamp | Last time the session was saved |
+
+## Quiz workflow
+
+<Steps>
+  <Step title="Start or resume a session">
+    When you enter quiz mode for a deck, the app checks `quiz_sessions.json` for an existing session. If one is found, you are prompted to resume it or start fresh. Resuming picks up at `current_index` with your previous score intact.
+  </Step>
+  <Step title="Answer the question">
+    For `single_choice` questions, click one option. For `multiple_choice` questions, select all options you believe are correct. Your selection is highlighted before you confirm.
+  </Step>
+  <Step title="Submit and see feedback">
+    After submitting, the correct answer(s) are revealed. Correct answers increment `correct_count`; wrong answers increment `wrong_count`.
+  </Step>
+  <Step title="Progress is auto-saved">
+    After each answer, the session is written to `quiz_sessions.json`. If the app closes unexpectedly, no progress is lost.
+  </Step>
+  <Step title="Finish the session">
+    When `current_index` reaches the end of `question_order`, the session is marked complete and your final score is shown.
+  </Step>
+</Steps>
+
+## Shuffling
+
+Question order is randomized at session creation using `random.shuffle` on the list of card indices. Each new session produces a different order, so repeated quizzes on the same deck feel fresh.
+
+```python
+order = list(range(len(deck.cards)))
+random.shuffle(order)
+```
+
+<Tip>
+Shuffling applies to the card indices, not the options within a card. Option order (A, B, C, D) remains as extracted by Gemini.
+</Tip>
+
+## Resuming a session
+
+If you close the app before finishing, the session is preserved in `quiz_sessions.json`. Next time you open quiz mode for that deck:
+
+1. The app detects a session with `current_index < len(question_order)` (incomplete).
+2. A dialog asks whether you want to **Resume** or **Restart**.
+3. Resuming restores your score and jumps to the unanswered question.
+4. Restarting creates a new `QuizSession` with a fresh shuffle.
+
+## Font zoom
+
+Long question text can be zoomed in or out from the quiz toolbar. Zoom preference is per-session and does not persist between sessions.
+
+## Scoring
+
+Scoring is all-or-nothing per question:
+
+- **Correct**: your selected answers exactly match `correct_answers` → `correct_count += 1`
+- **Wrong**: any mismatch → `wrong_count += 1`
+
+Your score is displayed as `correct_count / total_questions` at the end of the session.
+
+## Frequently asked questions
+
+<AccordionGroup>
+  <Accordion title="Can I quiz a subset of the deck?">
+    Not directly in quiz mode. However, you can use the status filter in study mode to identify cards you want to focus on, then use quiz mode on the full deck and skip past cards you already know.
+  </Accordion>
+  <Accordion title="Are quiz sessions synced across devices?">
+    Yes. `quiz_sessions.json` is included in the Google Drive Smart Merge sync. The session with the newer `updated_at` timestamp wins on each device.
+  </Accordion>
+  <Accordion title="What happens if a deck is updated after a session starts?">
+    The session stores shuffled indices into the card list. If cards are added or removed from the deck after the session was created, the indices may point to different cards. It is recommended to restart the session after editing a deck.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Study mode" icon="book-open" href="/features/study-mode">
+    Review cards at your own pace with flip-and-score mechanics.
+  </Card>
+  <Card title="Cloud sync" icon="cloud" href="/features/cloud-sync">
+    Sync quiz sessions across your devices via Google Drive.
+  </Card>
+</CardGroup>

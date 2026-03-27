@@ -1,0 +1,263 @@
+---
+title: "GeminiService"
+description: "AI-powered flashcard extraction service using Google Gemini — available in both Python and C#"
+---
+
+`GeminiService` extracts multiple-choice flashcards from exam images using the Google Gemini API. It is implemented in both the Python desktop app (`services/gemini_service.py`, using the `google-genai` SDK) and the .NET desktop app (`Services/GeminiService.cs`, using the Gemini REST API via `HttpClient`). Both implementations expose identical behavior: single-image scanning, PDF-batch mode, and parallel multi-key mode with automatic rate limiting and model fallback.
+
+The API surface documented here reflects the Python implementation. The C# version exposes the same methods in PascalCase (`ProcessImage`, `ProcessImagesAsPdfBatches`, `ProcessImagesParallel`, `ValidateKeysParallel`).
+
+## Constructor and setup
+
+### `GeminiService()`
+
+Creates a new instance with an empty key list and no active log callback.
+
+```python
+from services.gemini_service import GeminiService
+
+svc = GeminiService()
+```
+
+### `set_keys(keys, start_from=0)`
+
+Set the API keys to use for requests. Keys are round-robin rotated across calls.
+
+<ParamField path="keys" type="List[str]" required>
+  List of Google Gemini API key strings. Empty strings are stripped automatically.
+</ParamField>
+
+<ParamField path="start_from" type="int" default="0">
+  Index of the key to start from. Useful after `validate_keys_parallel` sets `_start_from` to spread load evenly.
+</ParamField>
+
+### `set_log_callback(callback)`
+
+Register a function to receive real-time progress and status messages during scanning.
+
+<ParamField path="callback" type="Callable[[str], None] | None" required>
+  A callable that accepts a single string argument. Pass `None` to disable logging. `print` works as a quick option.
+</ParamField>
+
+### `set_stop_event(event)`
+
+Provide a `threading.Event` that, when set, interrupts any in-progress sleeps (rate-limit waits, retry delays). This allows a UI cancel button to stop a long scan cleanly.
+
+<ParamField path="event" type="threading.Event | None" required>
+  A `threading.Event` instance. Set it from another thread to interrupt the service.
+</ParamField>
+
+## Key management
+
+### `validate_key(api_key) → Tuple[bool, str]`
+
+Test a single API key by sending a trivial prompt (`"Say OK in one word."`) to each model in `MODEL_LIST` until one responds or all fail.
+
+<ParamField path="api_key" type="str" required>
+  The Gemini API key to validate.
+</ParamField>
+
+<ResponseField name="(bool, str)" type="Tuple[bool, str]">
+  A tuple of `(valid, message)`. `valid` is `True` if any model accepted the key. `message` indicates the working model name or the error.
+</ResponseField>
+
+### `validate_keys_parallel(keys, on_log=None) → List[str]`
+
+Test all provided keys simultaneously in parallel threads. Dead keys are excluded from the returned list. Also sets an internal `_start_from` index so the first scan request is sent to the key that had the longest recovery time since validation.
+
+<ParamField path="keys" type="List[str]" required>
+  Keys to test. Typically the same list passed to `set_keys`.
+</ParamField>
+
+<ParamField path="on_log" type="Callable[[str], None] | None">
+  Optional callback to receive per-key validation results in real time.
+</ParamField>
+
+<ResponseField name="List[str]" type="List[str]">
+  Ordered list of keys that passed validation. Keys that failed or returned errors are omitted.
+</ResponseField>
+
+## Scanning
+
+### `process_image(image_path, max_retries=5) → Optional[Flashcard]`
+
+Send a single image to Gemini and parse the returned JSON into a `Flashcard`. Handles 429 rate-limit errors (waits and rotates keys), 404 model-not-found errors (falls back to next model in `MODEL_LIST`), and 5xx server errors.
+
+<ParamField path="image_path" type="str" required>
+  Absolute or relative path to the image file. Supported formats: `.jpg`, `.jpeg`, `.png`, `.webp`, `.bmp`.
+</ParamField>
+
+<ParamField path="max_retries" type="int" default="5">
+  Maximum number of attempts before raising a `RuntimeError`.
+</ParamField>
+
+<ResponseField name="Optional[Flashcard]" type="Optional[Flashcard]">
+  A `Flashcard` object if a question was found and parsed, or `None` if the image contained no question (blank page, logo, diagram only, etc.).
+</ResponseField>
+
+<Warning>
+  Raises `RuntimeError` if all retries are exhausted. Raises `ValueError` if no API keys are configured.
+</Warning>
+
+### `process_images_batch(image_paths, on_progress=None, on_error=None, stop_event=None, pause_event=None) → List[Optional[Flashcard]]`
+
+Scan images one by one, inserting a `request_delay` pause between each call to respect rate limits. Use this mode for small sets or when PDF conversion is not desired.
+
+<ParamField path="image_paths" type="List[str]" required>
+  Ordered list of image file paths to scan.
+</ParamField>
+
+<ParamField path="on_progress" type="Callable[[int, int, Optional[Flashcard]], None] | None">
+  Called after each image with `(completed, total, card_or_none)`.
+</ParamField>
+
+<ParamField path="on_error" type="Callable[[int, str, str], None] | None">
+  Called on failure with `(index, image_path, error_message)`.
+</ParamField>
+
+<ParamField path="stop_event" type="threading.Event | None">
+  When set, the loop exits after the current image finishes.
+</ParamField>
+
+<ParamField path="pause_event" type="threading.Event | None">
+  When set, the loop pauses between images until the event is cleared.
+</ParamField>
+
+<ResponseField name="List[Optional[Flashcard]]" type="List[Optional[Flashcard]]">
+  One entry per input image in the same order. `None` for images where extraction failed or no question was found.
+</ResponseField>
+
+### `process_images_as_pdf_batches(image_paths, batch_size=50, on_progress=None, on_error=None, stop_event=None, pause_event=None) → List[Optional[Flashcard]]`
+
+The recommended mode for large image sets. Images are grouped into batches of up to `batch_size`, merged into an in-memory PDF, and sent to Gemini as a single request using the `PDF_BATCH_PROMPT`. Gemini processes all pages in one call and returns a JSON array with one result per page.
+
+<ParamField path="image_paths" type="List[str]" required>
+  Ordered list of image paths. All images in a batch are merged into one PDF in this order.
+</ParamField>
+
+<ParamField path="batch_size" type="int" default="50">
+  Maximum pages per PDF batch request. Defaults to `PDF_BATCH_PAGES` (50).
+</ParamField>
+
+<ParamField path="on_progress" type="Callable[[int, int, Optional[Flashcard]], None] | None">
+  Progress callback `(completed, total, card_or_none)` fired for each individual image as results come in.
+</ParamField>
+
+<ParamField path="on_error" type="Callable[[int, str, str], None] | None">
+  Error callback `(index, image_path, error_message)` fired if an entire batch fails.
+</ParamField>
+
+<ParamField path="stop_event" type="threading.Event | None">
+  When set, batch processing stops after the current batch completes.
+</ParamField>
+
+<ParamField path="pause_event" type="threading.Event | None">
+  When set, processing pauses between batches until cleared.
+</ParamField>
+
+<ResponseField name="List[Optional[Flashcard]]" type="List[Optional[Flashcard]]">
+  One entry per input image, in original order. `None` for pages with no question or for all pages in a failed batch.
+</ResponseField>
+
+### `process_images_parallel(image_paths, keys, batch_size=50, on_progress=None, on_error=None, stop_event=None, pause_event=None) → List[Optional[Flashcard]]`
+
+Split images across multiple API keys and process each share on a dedicated background thread. Each thread runs `process_images_as_pdf_batches` internally. Results are reassembled into the original image order. This mode achieves the highest throughput when multiple valid keys are available.
+
+<ParamField path="image_paths" type="List[str]" required>
+  Full list of images to process.
+</ParamField>
+
+<ParamField path="keys" type="List[str]" required>
+  API keys to parallelize across. The list is split into N roughly-equal packs where N equals the number of keys.
+</ParamField>
+
+<ParamField path="batch_size" type="int" default="50">
+  Sub-batch size used within each worker thread's PDF batching.
+</ParamField>
+
+<ParamField path="on_progress" type="Callable[[int, int, Optional[Flashcard]], None] | None">
+  Shared progress callback across all worker threads. Thread-safe via a lock.
+</ParamField>
+
+<ParamField path="on_error" type="Callable[[int, str, str], None] | None">
+  Error callback fired per failed sub-batch image.
+</ParamField>
+
+<ParamField path="stop_event" type="threading.Event | None">
+  When set, all worker threads stop after their current sub-batch.
+</ParamField>
+
+<ParamField path="pause_event" type="threading.Event | None">
+  When set, workers pause between sub-batches.
+</ParamField>
+
+<ResponseField name="List[Optional[Flashcard]]" type="List[Optional[Flashcard]]">
+  Merged results in the original image order, one entry per image.
+</ResponseField>
+
+## Constants
+
+| Constant | Value | Description |
+|---|---|---|
+| `MODEL_LIST` | See below | Priority-ordered list of Gemini model IDs |
+| `SAFE_RPM` | `8` | Maximum requests per minute per API key |
+| `PDF_BATCH_PAGES` | `50` | Maximum pages merged into one PDF batch request |
+
+**`MODEL_LIST` order:**
+1. `gemini-2.5-flash` (recommended stable, 2026)
+2. `gemini-2.5-flash-lite`
+3. `gemini-3-flash-preview`
+4. `gemini-3.1-flash-lite-preview`
+5. `gemini-flash-latest`
+6. `gemini-flash-lite-latest`
+
+The service automatically falls back to the next model when a 404 or "not found" error indicates the current model is unavailable in the account's region or tier.
+
+## `request_delay` property
+
+Returns the number of seconds to wait between requests to stay within the per-key rate limit:
+
+```
+request_delay = max(60 / SAFE_RPM / n, 1.0)
+```
+
+where `n` is the number of configured keys. With one key this is `7.5` seconds; with four keys it is `1.875` seconds (floored to `1.0`).
+
+## Usage example
+
+```python
+from services.gemini_service import GeminiService
+import glob
+
+keys = ["AIza...key1", "AIza...key2"]
+
+svc = GeminiService()
+svc.set_log_callback(print)
+
+# Test keys first; returns only the valid ones
+valid_keys = svc.validate_keys_parallel(keys, on_log=print)
+
+# Apply valid keys with smart start index (set by validate_keys_parallel)
+start = getattr(svc, '_start_from', 0)
+svc.set_keys(valid_keys, start_from=start)
+
+# Scan a folder of images (PDF batch mode — recommended)
+images = sorted(glob.glob("scans/*.png"))
+cards = svc.process_images_as_pdf_batches(images)
+
+extracted = [c for c in cards if c is not None]
+print(f"Extracted {len(extracted)} cards")
+```
+
+<Note>
+  `process_images_as_pdf_batches` is preferred over `process_images_batch` for any set larger than a few images. A single PDF request processes up to 50 pages simultaneously, dramatically reducing wall-clock time and total API calls.
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="SyncService" icon="cloud" href="/reference/sync-service">
+    Upload and sync extracted decks to Google Drive.
+  </Card>
+  <Card title="ExportService" icon="file-export" href="/reference/export-service">
+    Export decks to Quizlet-compatible text files.
+  </Card>
+</CardGroup>

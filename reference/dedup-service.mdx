@@ -1,0 +1,97 @@
+---
+title: "Dedup service"
+description: "Duplicate question detection for flashcard decks"
+---
+
+The dedup service exposes a single module-level function that identifies pairs of cards whose questions (and answers) are suspiciously similar. It is optimised for large decks using n-gram shingling to skip obviously different pairs before running the more expensive string comparison.
+
+## Function
+
+### `find_duplicate_questions(cards, threshold=0.85) → List[Tuple[int, int, float]]`
+
+<ParamField path="cards" type="List[Flashcard]" required>
+  The list of `Flashcard` objects to check. Typically `deck.cards`.
+</ParamField>
+
+<ParamField path="threshold" type="float" default="0.85">
+  Combined similarity score (0.0–1.0) above which a pair is reported as a duplicate. Higher values require a closer match; lower values catch fuzzier duplicates.
+</ParamField>
+
+<ResponseField name="List[Tuple[int, int, float]]" type="List[Tuple[int, int, float]]">
+  A list of `(index_a, index_b, similarity_ratio)` tuples. Only pairs whose combined ratio meets or exceeds `threshold` are included. Results are sorted by `(index_a, index_b)` — deck order — so related duplicates appear together.
+</ResponseField>
+
+Returns an empty list if the deck has fewer than two cards.
+
+## Algorithm
+
+The function uses a two-stage approach that is roughly 10–50× faster than exhaustive pairwise comparison on decks with 500+ cards:
+
+<Steps>
+  <Step title="Normalise text">
+    Each question is lowercased and all whitespace is collapsed to single spaces.
+  </Step>
+  <Step title="Build 3-gram shingles">
+    Every normalised question is converted to a set of overlapping 3-character substrings (e.g. `"abc def"` → `{"abc", "bc ", "c d", " de", "def"}`).
+  </Step>
+  <Step title="Build inverted index">
+    Each shingle is mapped to the list of card indices that contain it, allowing fast candidate lookup.
+  </Step>
+  <Step title="Pre-filter with Jaccard similarity">
+    Card pairs that share at least `max(threshold - 0.15, 0.5)` Jaccard similarity on their shingle sets are added to the candidate set. Pairs below this estimate are skipped entirely.
+  </Step>
+  <Step title="Run SequenceMatcher on candidates">
+    `difflib.SequenceMatcher` computes an exact character-level similarity ratio for the question text of each candidate pair.
+  </Step>
+  <Step title="Compute combined ratio">
+    The final score weights question similarity more heavily than answer similarity:
+
+    ```
+    combined_ratio = (question_ratio × 0.6) + (answer_ratio × 0.4)
+    ```
+  </Step>
+  <Step title="Filter and return">
+    Pairs where `combined_ratio >= threshold` are returned, sorted by card index.
+  </Step>
+</Steps>
+
+<Tip>
+  **Threshold tuning:** The default `0.85` is a safe starting point for exam questions — it catches near-identical wording while avoiding false positives from questions that merely share a few key terms. Lower the threshold to `0.75` if you want to surface fuzzier duplicates (e.g. questions reworded but semantically identical), but expect more pairs to review manually.
+</Tip>
+
+## Usage example
+
+```python
+from services.dedup_service import find_duplicate_questions
+from services.storage_service import load_decks
+
+decks = load_decks()
+deck = decks[0]
+
+dupes = find_duplicate_questions(deck.cards, threshold=0.85)
+for idx_a, idx_b, ratio in dupes:
+    print(f"Similar ({ratio:.0%}): cards {idx_a} and {idx_b}")
+    print(f"  Q1: {deck.cards[idx_a].question[:60]}")
+    print(f"  Q2: {deck.cards[idx_b].question[:60]}")
+```
+
+Removing duplicates (keep the first card in each pair):
+
+```python
+dupes = find_duplicate_questions(deck.cards, threshold=0.85)
+indices_to_remove = {idx_b for _, idx_b, _ in dupes}
+deck.cards = [c for i, c in enumerate(deck.cards) if i not in indices_to_remove]
+```
+
+<Note>
+  Answer similarity contributes 40% of the combined score. Two questions with identical wording but different correct answers will score lower than `threshold` and will not be flagged as duplicates.
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="ExportService" icon="file-export" href="/reference/export-service">
+    Export cleaned decks to Quizlet-compatible text files.
+  </Card>
+  <Card title="GeminiService" icon="robot" href="/reference/gemini-service">
+    Extract flashcards from exam images using Gemini AI.
+  </Card>
+</CardGroup>

@@ -1,0 +1,114 @@
+---
+title: "Mobile quickstart"
+description: "Import decks on Android and study on the go with Flashcard AI"
+---
+
+This guide walks you through running the Flashcard AI Android app with Expo, importing a deck, and starting a study session.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org) 18 or later
+- **Expo Go** installed on your Android device ([Google Play](https://play.google.com/store/apps/details?id=host.exp.exponent)), **or** Expo CLI for a local build
+- A `decks.json` file exported from the desktop app (see the note below)
+
+<Note>
+  To get a `decks.json` file, export it from the Flashcard AI desktop app or sync it to your device via Google Drive. The mobile app reads this file directly from device storage.
+</Note>
+
+## Setup
+
+<Steps>
+  <Step title="Install dependencies">
+    Navigate to the Android app directory and install packages:
+
+    <CodeGroup>
+
+    ```bash npm
+    cd appAndroid
+    npm install
+    ```
+
+    ```bash yarn
+    cd appAndroid
+    yarn install
+    ```
+
+    </CodeGroup>
+  </Step>
+
+  <Step title="Start the Expo development server">
+    <CodeGroup>
+
+    ```bash npm
+    npx expo start
+    ```
+
+    ```bash yarn
+    yarn start
+    ```
+
+    </CodeGroup>
+
+    The terminal displays a QR code and a local development URL.
+  </Step>
+
+  <Step title="Open the app on your device">
+    **Option A — Expo Go (fastest):**
+    Open the Expo Go app on your Android device and scan the QR code shown in the terminal. The app loads over your local network.
+
+    **Option B — Run on connected device:**
+    ```bash
+    npx expo run:android
+    ```
+    Requires Android Studio and a connected device or emulator with USB debugging enabled.
+
+    <Note>
+      Expo Go is the quickest way to test. Use `expo run:android` when you need access to native modules not supported by Expo Go.
+    </Note>
+  </Step>
+
+  <Step title="Import a decks.json file">
+    1. On the **Home** screen, tap **Import decks.json**.
+    2. The device file picker opens — navigate to your `decks.json` file and select it.
+    3. Your decks appear in the deck list immediately. Data is persisted in AsyncStorage so it survives app restarts.
+  </Step>
+
+  <Step title="Start studying">
+    Tap any deck to open it, then choose a mode:
+
+    - **Flashcard mode** — swipe right to mark a card as known, swipe left to mark it unknown. Cards animate with a high-performance 3D flip.
+    - **Quiz mode** — answer single or multiple-choice questions. The app auto-resumes your last session if you leave mid-deck.
+
+    Extra-long question or answer text scrolls independently without conflicting with swipe gestures.
+  </Step>
+</Steps>
+
+## In-app update checker
+
+The app automatically checks for new releases from the [GitHub releases page](https://github.com/LHB16/Flashcard-AI/releases) when it starts. If a newer APK is available, a prompt appears offering to download and install it directly. You can dismiss the prompt and optionally suppress it for that version.
+
+To check manually, tap the **I** floating button on the Home screen and select **Check for updates**.
+
+## Build a standalone APK
+
+To install the app directly on a device without Expo Go:
+
+```bash
+cd appAndroid
+build_apk_release.bat
+```
+
+<Tip>
+  The output APK is named `FlashcardAI-Android-v<version>.apk`. Share it with other Android devices or upload it to an internal distribution service.
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Desktop quickstart" icon="monitor" href="/quickstart-desktop">
+    Set up the desktop app to scan images and generate decks.
+  </Card>
+  <Card title="Cloud sync" icon="cloud" href="/features/cloud-sync">
+    Sync decks between desktop and mobile automatically with Google Drive.
+  </Card>
+</CardGroup>

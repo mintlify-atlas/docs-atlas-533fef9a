@@ -1,0 +1,140 @@
+---
+title: "Export to Quizlet"
+description: "Export your flashcard decks to Quizlet-compatible text files in four formats"
+---
+
+## Overview
+
+Any deck can be exported to a `.txt` file that Quizlet can import directly. Four export formats are available to suit different import scenarios — from the simplest tab-separated format to a custom-separator format designed to handle questions that contain special characters.
+
+## Export formats
+
+<Tabs>
+  <Tab title="simple">
+    **Format:** `Question [TAB] Correct answer text`
+
+    The most compact format. Only the question and the correct answer text are included. Answer options (A, B, C...) are omitted.
+
+    ```text
+    What is the capital of France?	Paris
+    ```
+
+    Use this format when you want clean term/definition cards without the distraction of wrong options.
+  </Tab>
+  <Tab title="full">
+    **Format:** `Question >> A | B | C [TAB] Correct answer text`
+
+    Includes all answer options in the term field so you can still practice multiple-choice style in Quizlet.
+
+    ```text
+    What is the capital of France?  >>  A. London | B. Paris | C. Berlin	B. Paris
+    ```
+
+    The `>>` separator visually divides the question stem from the options list.
+  </Tab>
+  <Tab title="compact">
+    **Format:** `Question [A | B | C] [TAB] Answer letter(s)`
+
+    The definition side contains only the answer letter(s) rather than the full answer text. Useful when you want to force yourself to recall the letter before reading the full option.
+
+    ```text
+    What is the capital of France? [A. London | B. Paris | C. Berlin]	B
+    ```
+
+    For multiple-choice cards, letters are comma-separated: `A, C`.
+  </Tab>
+  <Tab title="safe">
+    **Format:** Custom separators — no tab characters used
+
+    Designed for questions that contain tab characters or other characters that break standard import. Uses unique Unicode-safe separators:
+
+    - **Term/Definition separator:** `{[(DapAn)]}`
+    - **Card separator:** `{[(CauHoi)]}`
+
+    Each card is formatted as:
+
+    ```text
+    {[(CauHoi)]}What is the capital of France?
+A. London
+B. Paris
+C. Berlin{[(DapAn)]}B. Paris
+    ```
+
+    When importing into Quizlet, set:
+    - *Between term and definition* → `{[(DapAn)]}`
+    - *Between cards* → `{[(CauHoi)]}`
+  </Tab>
+</Tabs>
+
+## How to export
+
+<Steps>
+  <Step title="Open a deck">
+    Select the deck you want to export from the deck list.
+  </Step>
+  <Step title="Choose a format">
+    Select one of the four formats from the export options panel. A live preview shows the first five cards in the selected format.
+  </Step>
+  <Step title="Export the file">
+    Click **Export**. A save dialog opens. Choose a location and filename; the file is saved as a `.txt` file encoded in UTF-8.
+  </Step>
+  <Step title="Import into Quizlet">
+    In Quizlet, go to **Create** → **Import**. Paste the file contents or upload the file. For `simple`, `full`, and `compact` formats, use the default tab separator. For `safe` format, set the custom separators as described above.
+  </Step>
+</Steps>
+
+## Format comparison
+
+| Format | Term contains | Definition contains | Best for |
+|--------|--------------|---------------------|----------|
+| `simple` | Question only | Correct answer text | Clean flashcards |
+| `full` | Question + all options | Correct answer text | Multiple-choice practice |
+| `compact` | Question + all options | Answer letter(s) only | Letter-recall drilling |
+| `safe` | Question + options (one per line) | Correct answer text | Questions with special characters |
+
+## Skipped cards
+
+Cards with an empty question field are skipped during export. The export result message reports how many cards were exported and how many were skipped:
+
+```
+Exported 48 cards (2 skipped) to:
+/Users/yourname/Documents/my_deck.txt
+```
+
+<Note>
+Skipped cards are not deleted from the deck — only excluded from the current export file. Fix the question text in the deck editor and re-export to include them.
+</Note>
+
+## Importing into Quizlet
+
+<AccordionGroup>
+  <Accordion title="Standard formats (simple, full, compact)">
+    1. Open Quizlet and click **Create a new study set**.
+    2. Click **Import from Word, Excel, Google Docs, etc.**
+    3. Paste the exported file contents.
+    4. Confirm the separator settings: *Between term and definition* = Tab, *Between rows* = New line.
+    5. Click **Import**.
+  </Accordion>
+  <Accordion title="Safe format">
+    1. Open Quizlet and click **Create a new study set**.
+    2. Click **Import from Word, Excel, Google Docs, etc.**
+    3. Paste the exported file contents.
+    4. Set *Between term and definition* to `{[(DapAn)]}`.
+    5. Set *Between cards* to `{[(CauHoi)]}`.
+    6. Click **Import**.
+  </Accordion>
+  <Accordion title="Why does my import look wrong?">
+    The most common cause is a separator mismatch. Check that the separator settings in Quizlet match the format you exported. For `full` and `compact`, the term field contains `>>` or `[...]` which are visual only — they do not affect the separator.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="AI scanning" icon="scan" href="/features/ai-scanning">
+    Learn how flashcards are extracted from images using Gemini.
+  </Card>
+  <Card title="Cloud sync" icon="cloud" href="/features/cloud-sync">
+    Sync your decks across devices before exporting.
+  </Card>
+</CardGroup>

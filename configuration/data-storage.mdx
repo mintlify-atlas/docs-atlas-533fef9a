@@ -1,0 +1,149 @@
+---
+title: "Data storage"
+description: "Understand how Flashcard AI stores decks, sessions, and settings locally"
+---
+
+Flashcard AI is a local-first application. All data is stored as JSON files on your device. Google Drive sync is optional and only copies the deck and session data — never images or credentials.
+
+## Desktop files (Python / .NET)
+
+All files are written to the same directory as the app executable (or `app.py` when running from source).
+
+| File                | Contents                                              |
+| ------------------- | ----------------------------------------------------- |
+| `decks.json`        | All decks and their flashcard data                    |
+| `settings.json`     | App settings: `api_keys`, `theme`, `quizlet_format`   |
+| `quiz_sessions.json`| Active quiz session progress, keyed by `deck_id`      |
+| `token.json`        | Google OAuth token, created on first Drive sign-in    |
+
+<Note>
+  `token.json` is created automatically when you sign in to Google Drive. `settings.json` is created on first save. Neither file is present until the relevant feature is used.
+</Note>
+
+## Mobile files (Android)
+
+The Android app uses React Native **AsyncStorage** instead of the filesystem:
+
+- Deck list
+- Quiz session map (keyed by `deck_id`)
+- Google Drive sync local state
+
+To move decks from desktop to mobile, export `decks.json` from the desktop app and import it on the mobile app, or use Google Drive sync.
+
+## Data model
+
+### Flashcard
+
+| Field            | Type            | Description                                              |
+| ---------------- | --------------- | -------------------------------------------------------- |
+| `card_id`        | string          | Unique identifier (UUID)                                 |
+| `question`       | string          | The question text                                        |
+| `options`        | array of string | Answer options (e.g. `["A. ...", "B. ..."]`)             |
+| `correct_answers`| array of string | Correct option labels (e.g. `["A"]` or `["A", "C"]`)   |
+| `question_type`  | string          | `"single_choice"` or `"multiple_choice"`                 |
+| `image_path`     | string          | Absolute local path to the source image                  |
+| `notes`          | string          | Optional notes; set by AI when answer was inferred       |
+| `status`         | integer         | Study progress: `0` unseen, `1` learning, `2` mastered   |
+
+### Deck
+
+| Field           | Type            | Description                                 |
+| --------------- | --------------- | ------------------------------------------- |
+| `deck_id`       | string          | Unique identifier (UUID)                    |
+| `name`          | string          | Deck display name                           |
+| `cards`         | array           | List of Flashcard objects                   |
+| `created_at`    | string          | ISO 8601 timestamp of creation              |
+| `updated_at`    | string          | ISO 8601 timestamp of last save             |
+| `source_folder` | string          | Folder path used when the deck was scanned  |
+| `description`   | string          | Optional description                        |
+
+### QuizSession
+
+| Field            | Type            | Description                                          |
+| ---------------- | --------------- | ---------------------------------------------------- |
+| `deck_id`        | string          | References the parent deck                           |
+| `session_id`     | string          | Unique session identifier                            |
+| `question_order` | array of integer | Shuffled list of card indices (positions in `cards` array) for this session |
+| `current_index`  | integer         | Position in `question_order`                         |
+| `answers`        | object          | Map of `card_id` to the user's answer                |
+| `correct_count`  | integer         | Running correct answer count                         |
+| `wrong_count`    | integer         | Running wrong answer count                           |
+| `started_at`     | string          | ISO 8601 timestamp                                   |
+| `updated_at`     | string          | ISO 8601 timestamp of last save                      |
+
+## settings.json structure
+
+The settings file is created automatically on first save. Default values when the file does not yet exist:
+
+```json
+{
+  "api_keys": [],
+  "theme": "dark",
+  "quizlet_format": "full"
+}
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `api_keys` | array of string | `[]` | List of Gemini API key strings used for scanning |
+| `theme` | string | `"dark"` | UI theme (`"dark"` or `"light"`) |
+| `quizlet_format` | string | `"full"` | Default Quizlet export format (`"simple"`, `"full"`, `"compact"`, or `"safe"`) |
+
+## decks.json example
+
+```json
+[
+  {
+    "deck_id": "abc-123",
+    "name": "Networking Exam",
+    "created_at": "2026-01-15T10:00:00",
+    "updated_at": "2026-01-20T14:30:00",
+    "source_folder": "C:/scans/networking",
+    "description": "",
+    "cards": [
+      {
+        "card_id": "card-456",
+        "question": "Which layer of the OSI model handles routing?",
+        "options": ["A. Data Link", "B. Network", "C. Transport"],
+        "correct_answers": ["B"],
+        "question_type": "single_choice",
+        "image_path": "C:/scans/networking/slide_05.png",
+        "notes": "",
+        "status": 2
+      }
+    ]
+  }
+]
+```
+
+## Notes on specific fields
+
+**`image_path`** stores the absolute local path to the source scan image at the time the card was created. These paths are device-specific and are **not uploaded to Google Drive** during sync. If you move your image folder, the path reference becomes stale, but the question and answer data is unaffected.
+
+**`status`** tracks your study progress per card:
+
+| Value | Meaning                                   |
+| ----- | ----------------------------------------- |
+| `0`   | Unseen — not yet reviewed                 |
+| `1`   | Learning — marked wrong at least once     |
+| `2`   | Mastered — marked correct                 |
+
+**`updated_at`** on a deck is refreshed automatically on every save. During Google Drive Smart Merge, the deck with the newer `updated_at` timestamp wins, so the most recently modified device takes precedence.
+
+<AccordionGroup>
+  <Accordion title="Backing up your data">
+    To back up your decks, copy `decks.json` to a safe location. This single file contains all your deck and card data. `quiz_sessions.json` contains in-progress session state and can be omitted from backups if needed.
+  </Accordion>
+  <Accordion title="Resetting app state">
+    To reset the app to a clean state, delete `decks.json`, `quiz_sessions.json`, and `settings.json`. The app recreates them with defaults on next launch. Delete `token.json` as well to sign out of Google Drive.
+  </Accordion>
+</AccordionGroup>
+
+<CardGroup cols={2}>
+  <Card title="Gemini API keys" icon="key" href="/configuration/gemini-api-keys">
+    Add and manage API keys for AI scanning.
+  </Card>
+  <Card title="Google Drive setup" icon="hard-drive" href="/configuration/google-drive">
+    Configure Drive sync for multi-device access.
+  </Card>
+</CardGroup>

@@ -1,0 +1,129 @@
+---
+title: "Desktop quickstart"
+description: "Set up the Flashcard AI desktop app and scan your first deck"
+---
+
+This guide walks you through installing the Flashcard AI desktop app, connecting your Gemini API key, and scanning a folder of images to produce your first flashcard deck.
+
+## Prerequisites
+
+- Windows 10 or later
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) installed (for the primary .NET app)
+- A Google Gemini API key — see the tip below
+
+<Tip>
+  Get a free Gemini API key at [ai.google.dev](https://ai.google.dev). The free tier is sufficient for personal use.
+</Tip>
+
+## Setup
+
+<Tabs>
+  <Tab title=".NET 8 (recommended)">
+    <Steps>
+      <Step title="Clone the repository">
+        ```bash
+        git clone https://github.com/LHB16/Flashcard-AI.git
+        cd Flashcard-AI/appDotNet/FlashcardAI
+        ```
+      </Step>
+
+      <Step title="Build and run">
+        ```bash
+        dotnet run
+        ```
+
+        The app window opens automatically. No additional build step is required for development.
+      </Step>
+
+      <Step title="Add your Gemini API key">
+        1. Open **Settings** from the top menu.
+        2. Paste your Gemini API key into the API key field.
+        3. Click **Save**. The key is stored locally and never committed to source control.
+
+        <Note>
+          You can add multiple API keys. The app rotates between them to spread request load and avoid rate limits.
+        </Note>
+      </Step>
+
+      <Step title="Create a new deck and scan a folder">
+        1. On the **Home** screen, click **New Deck** and give it a name.
+        2. Navigate to the **Scan** tab.
+        3. Select your deck from the dropdown, then click **Choose Folder** and pick a directory containing your image files (PNG, JPG) or video files (MP4, AVI).
+        4. Click **Start Scan**. Progress and logs appear in real time. Multiple scans can run in parallel.
+      </Step>
+
+      <Step title="Review extracted cards">
+        When the scan finishes, open the deck from the **Home** screen.
+        Each card shows the extracted question and answer options. Cards flagged as `inferred` had no explicit answer marking in the source image — review these first.
+
+        From here you can:
+        - Enter **Study Mode** — use `Space` to flip a card and arrow keys to score it.
+        - Enter **Quiz Mode** — single or multiple-choice practice with progress auto-saving.
+        - **Export** the deck to Quizlet format (`.txt`) in four layout variants.
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Python legacy">
+    <Steps>
+      <Step title="Clone the repository">
+        ```bash
+        git clone https://github.com/LHB16/Flashcard-AI.git
+        cd Flashcard-AI/appPython
+        ```
+      </Step>
+
+      <Step title="Install dependencies">
+        ```bash
+        pip install -r requirements.txt
+        ```
+
+        Requires Python 3.10 or later.
+      </Step>
+
+      <Step title="Run the app">
+        ```bash
+        python app.py
+        ```
+
+        The CustomTkinter window opens. Follow the same steps as the .NET app to add an API key and scan a folder.
+      </Step>
+    </Steps>
+
+    <Note>
+      The Python app has feature parity for scanning and study, but the .NET 8 app receives new features first. Use the Python app if you cannot install the .NET SDK.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Build a standalone executable
+
+To distribute the app without requiring the SDK on the target machine:
+
+<Tabs>
+  <Tab title=".NET 8">
+    ```bash
+    cd appDotNet
+    build_exe.bat
+    ```
+  </Tab>
+  <Tab title="Python legacy">
+    ```bash
+    cd appPython
+    build_exe.bat
+    ```
+  </Tab>
+</Tabs>
+
+The .NET build output is named `FlashcardAI-DotNet-v<version>.exe`; the Python build output is named `FlashcardAI-Python-v<version>.exe`.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Mobile quickstart" icon="mobile" href="/quickstart-mobile">
+    Import your exported deck on Android and study on the go.
+  </Card>
+  <Card title="Cloud sync" icon="cloud" href="/features/cloud-sync">
+    Enable bi-directional Google Drive sync to keep all devices up to date.
+  </Card>
+</CardGroup>

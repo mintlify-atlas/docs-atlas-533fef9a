@@ -1,0 +1,166 @@
+---
+title: "Build the Android app"
+description: "Build the Flashcard AI Android app as a release APK for distribution"
+---
+
+## App details
+
+| Property | Value |
+|---|---|
+| App name | `FlashcardAI` |
+| Android package | `com.flashcardai.app` |
+| Version | `1.0.8` |
+| Expo SDK | `55` |
+| React Native | `0.83.2` |
+
+## Prerequisites
+
+- **Node.js 18+** and **npm**
+- For **local APK builds**: Android SDK, Java 17 (JDK)
+- For **EAS cloud builds**: an [Expo account](https://expo.dev) and the EAS CLI
+
+## Development testing with Expo Go
+
+<Tip>
+  The fastest way to test the app is with **Expo Go** — no APK build required. Install Expo Go on your Android device, start the dev server, and scan the QR code.
+</Tip>
+
+```bash
+cd appAndroid
+npm install
+npx expo start
+```
+
+Scan the QR code shown in the terminal with the **Expo Go** app on your Android device.
+
+## Build a release APK
+
+<Tabs>
+  <Tab title="Local build">
+    Build the APK directly on your machine using Gradle.
+
+    ### Prerequisites
+
+    - Android SDK installed
+    - Java 17 (JDK) installed
+    - Update the paths in `build_apk_release.bat` to match your local SDK and JDK locations
+
+    ### Steps
+
+    <Steps>
+      <Step title="Navigate to the appAndroid directory">
+        ```bash
+        cd appAndroid
+        ```
+      </Step>
+
+      <Step title="Run the release build script">
+        ```bash
+        build_apk_release.bat
+        ```
+
+        The script:
+        1. Clears the Metro bundler cache
+        2. Runs `gradlew clean` to wipe old Gradle outputs
+        3. Runs `gradlew assembleRelease` to bundle the JS and compile the APK
+      </Step>
+
+      <Step title="Locate the output">
+        The script renames the APK to include the version number. The final file is at:
+
+        ```
+        appAndroid\android\app\build\outputs\apk\release\FlashcardAI-Android-v<version>.apk
+        ```
+      </Step>
+    </Steps>
+
+    ### Debug APK
+
+    For development testing, you can build a debug APK instead:
+
+    ```bash
+    build_apk_debug.bat
+    ```
+
+    Output goes to:
+
+    ```
+    appAndroid\android\app\build\outputs\apk\debug\
+    ```
+  </Tab>
+
+  <Tab title="EAS cloud build">
+    Use **Expo Application Services (EAS)** to build the APK in the cloud — no Android SDK or JDK required locally.
+
+    ### Prerequisites
+
+    - An [Expo account](https://expo.dev)
+    - EAS CLI installed:
+
+      ```bash
+      npm install -g eas-cli
+      ```
+
+    ### Steps
+
+    <Steps>
+      <Step title="Log in to Expo">
+        ```bash
+        eas login
+        ```
+      </Step>
+
+      <Step title="Navigate to the appAndroid directory">
+        ```bash
+        cd appAndroid
+        ```
+      </Step>
+
+      <Step title="Start a production build">
+        ```bash
+        eas build --platform android --profile production
+        ```
+
+        The `production` profile in `eas.json` has `autoIncrement: true`, which automatically bumps the version code on each build.
+      </Step>
+
+      <Step title="Download the APK">
+        When the build completes, EAS provides a download link in the terminal and on the [Expo dashboard](https://expo.dev).
+      </Step>
+    </Steps>
+
+    ### EAS build profiles (eas.json)
+
+    ```json
+    {
+      "build": {
+        "development": {
+          "developmentClient": true,
+          "distribution": "internal"
+        },
+        "preview": {
+          "distribution": "internal"
+        },
+        "production": {
+          "autoIncrement": true
+        }
+      }
+    }
+    ```
+
+    | Profile | Use case |
+    |---|---|
+    | `development` | Internal testing with dev client |
+    | `preview` | Internal distribution for QA |
+    | `production` | Release build with auto version increment |
+  </Tab>
+</Tabs>
+
+<CardGroup cols={2}>
+  <Card title="Build the .NET desktop app" icon="microsoft" href="/building/desktop-dotnet">
+    Build the recommended Windows desktop app
+  </Card>
+  <Card title="Build the Python desktop app" icon="python" href="/building/desktop-python">
+    Build the legacy Python desktop app
+  </Card>
+</CardGroup>

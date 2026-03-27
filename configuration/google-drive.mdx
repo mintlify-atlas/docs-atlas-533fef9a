@@ -1,0 +1,97 @@
+---
+title: "Google Drive setup"
+description: "Configure Google Drive to sync your decks across devices"
+---
+
+Flashcard AI can sync your decks and quiz sessions to Google Drive, making them available on any device running the app. Sync uses the **Drive AppData** scope — a private, hidden folder that only the app can access.
+
+## What gets synced
+
+Only two files are synced to Google Drive:
+
+- `decks.json` — all deck and card data
+- `quiz_sessions.json` — active quiz session progress
+
+Image files and local file paths are **not** uploaded. The Drive copy contains only the question and answer data.
+
+Smart Merge is used during sync: when the same deck exists on multiple devices, the copy with the newer `updated_at` timestamp wins.
+
+<Note>
+  Synced files live in the hidden Drive AppData folder. They are not visible in the normal Google Drive file browser and cannot be accessed by other apps or people viewing your Drive.
+</Note>
+
+## End users (official build)
+
+The official release includes embedded OAuth credentials. No Google Cloud setup is required. When you click **Sign in with Google** in the app, it opens a browser window for you to authorize access. After authorization, a `token.json` file is saved locally and used for all future sync requests.
+
+## Developer setup (custom Google Cloud project)
+
+If you want to use your own Google Cloud project — for example, when building from source or distributing a fork — follow these steps to create and configure your own credentials.
+
+<Steps>
+  <Step title="Create a Google Cloud project">
+    Go to [console.cloud.google.com](https://console.cloud.google.com) and create a new project. Give it a descriptive name like `flashcard-sync`.
+  </Step>
+  <Step title="Enable the Google Drive API">
+    In the left menu, go to **APIs & Services → Library**. Search for **Google Drive API** and click **Enable**.
+  </Step>
+  <Step title="Configure the OAuth Consent Screen">
+    Go to **APIs & Services → OAuth Consent Screen**.
+
+    - Choose **Internal** if your Google Workspace organization will use the app, or **External** for personal use.
+    - For External apps in testing, add your own email address as a test user.
+    - Fill in the required app name and contact fields and save.
+  </Step>
+  <Step title="Create an OAuth Client ID credential">
+    Go to **APIs & Services → Credentials → Create Credentials → OAuth Client ID**.
+
+    - Set the application type to **Desktop app**.
+    - Give it a name and click **Create**.
+  </Step>
+  <Step title="Download and place the credentials file">
+    Click **Download JSON** on the credential you just created. Rename the downloaded file to `credentials.json` and place it in the project root directory (the same folder as `app.py` or the `.exe`).
+
+    The app checks for `credentials.json` first and uses it instead of the embedded credentials if it is present.
+  </Step>
+  <Step title="Sign in">
+    Run the app and click **Sign in with Google**. A browser window opens for the OAuth flow. After you approve access, `token.json` is created automatically and the app is connected.
+  </Step>
+</Steps>
+
+<Warning>
+  Never commit `credentials.json` or `token.json` to version control. Both files are listed in `.gitignore` by default. `credentials.json` contains your OAuth client secret; `token.json` contains a live refresh token that grants access to your Google account. Treat both as sensitive secrets.
+</Warning>
+
+## File reference
+
+| File               | Purpose                                               | Created by         |
+| ------------------ | ----------------------------------------------------- | ------------------ |
+| `credentials.json` | OAuth client configuration from Google Cloud Console | You (manual step)  |
+| `token.json`       | Stored OAuth token after first sign-in                | App (automatic)    |
+
+Both files are stored in the app root directory alongside `decks.json` and `settings.json`.
+
+## Revoking access
+
+To disconnect the app from your Google account:
+
+1. Click **Sign out** in the app. This deletes your local `token.json`.
+2. To fully revoke access, go to [myaccount.google.com/permissions](https://myaccount.google.com/permissions) and remove the app from your authorized applications.
+
+<AccordionGroup>
+  <Accordion title="What happens if sync fails">
+    The sync service handles intermittent connection issues gracefully. If a sync request fails, the app continues working locally and retries on the next sync trigger. Local data is never overwritten by a failed sync.
+  </Accordion>
+  <Accordion title="Using the mobile app with Drive sync">
+    The Android app also supports Google Drive sync using its own OAuth flow (`expo-auth-session`). The same `decks.json` and `quiz_sessions.json` files are read and written, so data is shared between desktop and mobile as long as both are signed in to the same Google account.
+  </Accordion>
+</AccordionGroup>
+
+<CardGroup cols={2}>
+  <Card title="Gemini API keys" icon="key" href="/configuration/gemini-api-keys">
+    Add and manage API keys for AI scanning.
+  </Card>
+  <Card title="Data storage" icon="database" href="/configuration/data-storage">
+    Understand how data is stored locally.
+  </Card>
+</CardGroup>

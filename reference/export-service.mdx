@@ -1,0 +1,103 @@
+---
+title: "Export service"
+description: "Functions for exporting flashcard decks to Quizlet-compatible text files"
+---
+
+The export service provides two module-level functions for converting a `Deck` to Quizlet's import format. No class instantiation is needed.
+
+## Functions
+
+### `export_to_quizlet(deck, output_path, format_type="full") → str`
+
+Write all cards in a deck to a `.txt` file that can be imported directly into Quizlet. Cards with an empty `question` field are silently skipped.
+
+<ParamField path="deck" type="Deck" required>
+  The `Deck` object to export. All `deck.cards` are iterated in order.
+</ParamField>
+
+<ParamField path="output_path" type="str" required>
+  File system path for the output `.txt` file. The file is created or overwritten. The parent directory must exist.
+</ParamField>
+
+<ParamField path="format_type" type="str" default="full">
+  Controls how each card is serialised. One of `"simple"`, `"full"`, `"compact"`, or `"safe"`. See [Format types](#format-types) below.
+</ParamField>
+
+<ResponseField name="str" type="str">
+  A human-readable status string, e.g. `"Exported 42 cards (0 skipped) to:\n/path/to/file.txt"`.
+</ResponseField>
+
+### `get_quizlet_preview(deck, format_type="full", max_rows=5) → str`
+
+Return a multi-line string preview of the first `max_rows` cards in the chosen format. Useful for showing the user what the export will look like before writing to disk.
+
+<ParamField path="deck" type="Deck" required>
+  The deck to preview.
+</ParamField>
+
+<ParamField path="format_type" type="str" default="full">
+  Export format. Same options as `export_to_quizlet`.
+</ParamField>
+
+<ParamField path="max_rows" type="int" default="5">
+  Maximum number of cards to include in the preview.
+</ParamField>
+
+<ResponseField name="str" type="str">
+  Cards joined by double newlines (`\n\n`) for readability. Empty questions are skipped.
+</ResponseField>
+
+## Format types
+
+All formats separate the term (left side) from the definition (right side) with a tab character (`\t`), which is the standard Quizlet delimiter — except `"safe"` mode which uses custom string separators.
+
+| Format | Term side | Definition side | Best for |
+|---|---|---|---|
+| `simple` | `{question}` | `{answer_text}` | Clean flashcards with no option clutter |
+| `full` | `{question}  >>  {options_joined}` | `{answer_text}` | Preserving all options for study context |
+| `compact` | `{question} [{options_joined}]` | `{answer_letters}` | Letter-only answer recall |
+| `safe` | `{[(CauHoi)]}{question}\n{options_lines}` | `{answer_text}` | Decks with commas or tabs inside question text |
+
+**`safe` mode separators** (configure these in Quizlet's import dialog):
+- Card separator: `{[(CauHoi)]}`
+- Term/definition separator: `{[(DapAn)]}`
+
+<Note>
+  In `safe` mode, cards are concatenated without newlines between them. The `{[(CauHoi)]}` prefix on each card acts as the card separator when imported into Quizlet.
+</Note>
+
+## Usage example
+
+```python
+from services.export_service import export_to_quizlet, get_quizlet_preview
+from services.storage_service import load_decks
+
+decks = load_decks()
+deck = decks[0]
+
+# Preview the first 5 cards before exporting
+print(get_quizlet_preview(deck, format_type="full"))
+
+# Export all cards
+result = export_to_quizlet(deck, "my_deck.txt", format_type="full")
+print(result)  # "Exported 42 cards (0 skipped) to: my_deck.txt"
+```
+
+Choosing a format based on deck content:
+
+```python
+# For decks with special characters or Vietnamese punctuation
+result = export_to_quizlet(deck, "safe_export.txt", format_type="safe")
+
+# For letter-recall practice
+result = export_to_quizlet(deck, "compact_export.txt", format_type="compact")
+```
+
+<CardGroup cols={2}>
+  <Card title="GeminiService" icon="robot" href="/reference/gemini-service">
+    Extract flashcards from exam images using Gemini AI.
+  </Card>
+  <Card title="DedupService" icon="copy" href="/reference/dedup-service">
+    Find and remove duplicate questions before exporting.
+  </Card>
+</CardGroup>

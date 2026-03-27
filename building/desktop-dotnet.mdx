@@ -1,0 +1,110 @@
+---
+title: "Build the .NET desktop app"
+description: "Build and package the Flashcard AI Windows desktop app as a standalone EXE"
+---
+
+## Prerequisites
+
+- **Windows** (the build target is `win-x64`)
+- **.NET 8 SDK** — [download here](https://dotnet.microsoft.com/download)
+- **Node.js** — used by the build script to read the version from `package.json`
+
+## Architecture overview
+
+The desktop app is built with **WPF on .NET 8** using an **MVVM architecture**. Key properties from the project file:
+
+- `PublishSingleFile`: bundles everything into one EXE
+- `SelfContained`: includes the .NET runtime — no installation required on the target machine
+- `RuntimeIdentifier`: targets `win-x64`
+
+<Note>
+  The published EXE is fully self-contained. Users do not need .NET installed to run it.
+</Note>
+
+## Run in development
+
+```bash
+cd appDotNet/FlashcardAI
+dotnet run
+```
+
+## Build a standalone EXE
+
+<Steps>
+  <Step title="Navigate to the appDotNet directory">
+    ```bash
+    cd appDotNet
+    ```
+  </Step>
+
+  <Step title="Run the build script">
+    ```bash
+    build_exe.bat
+    ```
+
+    The script runs:
+
+    ```bash
+    dotnet publish FlashcardAI\FlashcardAI.csproj -c Release
+    ```
+
+    This triggers a Release publish using the settings declared in `FlashcardAI.csproj` — single-file, self-contained, win-x64.
+  </Step>
+
+  <Step title="Locate the output">
+    After the build completes, the script renames the output to include the version number. The final file is placed at:
+
+    ```
+    appDotNet\FlashcardAI\bin\Release\net8.0-windows\win-x64\publish\FlashcardAI-DotNet-v<version>.exe
+    ```
+
+    The publish directory opens automatically when the script finishes.
+  </Step>
+</Steps>
+
+## Project configuration (FlashcardAI.csproj)
+
+```xml
+<PropertyGroup>
+  <OutputType>WinExe</OutputType>
+  <TargetFramework>net8.0-windows</TargetFramework>
+  <UseWPF>true</UseWPF>
+  <PublishSingleFile>true</PublishSingleFile>
+  <SelfContained>true</SelfContained>
+  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+</PropertyGroup>
+```
+
+Key NuGet dependencies included in the build:
+
+| Package | Purpose |
+|---|---|
+| `Google.Apis.Drive.v3` | Cloud Sync via Google Drive API |
+| `Google.Apis.Oauth2.v2` | OAuth 2.0 authentication |
+| `OpenCvSharp4` | Video frame extraction for AI OCR |
+| `PdfSharpCore` | PDF handling |
+| `SkiaSharp` | Image rendering |
+
+## Google Drive credentials
+
+<Note>
+  The official release build includes **embedded OAuth credentials**, so Google Drive Cloud Sync works out of the box without any additional setup.
+</Note>
+
+If you want to use your own Google Cloud project instead:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) and create a project.
+2. Enable the **Google Drive API**.
+3. Configure the **OAuth Consent Screen**.
+4. Create an **OAuth Client ID** (Desktop App) under Credentials.
+5. Download the JSON file, rename it to `credentials.json`, and place it in the project root. The app will use this file if it exists, overriding the embedded credentials.
+
+<CardGroup cols={2}>
+  <Card title="Build the Python app" icon="python" href="/building/desktop-python">
+    Package the legacy Python desktop app as a standalone EXE
+  </Card>
+  <Card title="Build the Android app" icon="mobile" href="/building/mobile-android">
+    Build the React Native app as a release APK
+  </Card>
+</CardGroup>

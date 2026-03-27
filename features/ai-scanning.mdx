@@ -1,0 +1,167 @@
+---
+title: "AI scanning"
+description: "Extract flashcards automatically from images, PDFs, and videos using Google Gemini"
+---
+
+## Overview
+
+AI scanning is the core workflow of Flashcard AI. Point the desktop app at a folder of images or a video file, and Gemini extracts every multiple-choice question as a structured flashcard — no manual typing required.
+
+Images are batched into PDFs (up to 50 pages per batch) and sent to Gemini with a structured extraction prompt. Gemini returns one JSON object per page containing the question, answer options, correct answers, question type, and whether it inferred the answer.
+
+## Supported input types
+
+| Type | Extensions |
+|------|------------|
+| Images | `.jpg`, `.jpeg`, `.png`, `.webp`, `.bmp` |
+| Video files | `.mp4`, `.avi` |
+| Direct PDF | Sent as-is in batch mode |
+
+<Note>
+Video files are processed by extracting frames first. Each distinct frame is treated as an image page before being batched.
+</Note>
+
+## How scanning works
+
+<Steps>
+  <Step title="Select a folder">
+    Choose a folder containing your exam images (or a video file) from the desktop app. The app reads all supported image files in order.
+  </Step>
+  <Step title="Images are merged into PDFs">
+    Images are grouped into batches of up to 50 pages each. Each batch is merged into a single in-memory PDF and sent to Gemini in one API call, which is faster and cheaper than sending images one by one.
+  </Step>
+  <Step title="Gemini extracts questions">
+    Gemini processes every page and returns a JSON array — one object per page. The extraction prompt instructs Gemini to capture the question stem, all answer options, the correct answer(s), question type, and whether the answer was inferred.
+  </Step>
+  <Step title="Flashcards are created">
+    Each valid JSON object becomes a `Flashcard`. Pages with no question (`NOT_A_QUESTION`) are silently skipped. Cards with inferred answers get an automatic warning note.
+  </Step>
+  <Step title="Deck is saved">
+    All extracted cards are saved to `decks.json` as a new deck. The deck is immediately available for study and quiz mode.
+  </Step>
+</Steps>
+
+## Gemini JSON output format
+
+Each page Gemini processes returns one object with this structure:
+
+```json
+{
+  "question": "Which layer of the OSI model is responsible for end-to-end communication?",
+  "options": ["A. Network", "B. Transport", "C. Session", "D. Data Link"],
+  "correct_answers": ["B"],
+  "type": "single_choice",
+  "inferred": false
+}
+```
+
+For multi-answer questions:
+
+```json
+{
+  "question": "Which of the following are valid HTTP methods?",
+  "options": ["A. GET", "B. SEND", "C. POST", "D. FETCH", "E. DELETE"],
+  "correct_answers": ["A", "C", "E"],
+  "type": "multiple_choice",
+  "inferred": false
+}
+```
+
+## Model fallback chain
+
+If a model is unavailable (HTTP 404) the app automatically falls back to the next model in the list:
+
+1. `gemini-2.5-flash` *(default, recommended)*
+2. `gemini-2.5-flash-lite`
+3. `gemini-3-flash-preview`
+4. `gemini-3.1-flash-lite-preview`
+5. `gemini-flash-latest`
+6. `gemini-flash-lite-latest`
+
+<Tip>
+`gemini-2.5-flash` is the recommended model as of 2026. It offers the best balance of speed and accuracy for exam image extraction.
+</Tip>
+
+## Inferred answers
+
+When no explicit answer clue is visible in an image (no highlight, checkmark, filled bubble, or solution section), Gemini reasons using its domain knowledge and marks the card with `"inferred": true`.
+
+These cards receive an automatic note:
+
+> ⚠ Đáp án do AI suy luận (không có đáp án rõ trong ảnh)
+
+<Warning>
+Inferred answers may be incorrect. Review cards with the warning note carefully and correct them before using the deck in a graded context.
+</Warning>
+
+## Skipped pages
+
+Gemini automatically skips pages that do not contain a question:
+
+- Blank or mostly blank pages
+- Title pages and course headers
+- Logo or watermark-only pages
+- Diagrams or charts with no question stem
+- Answer explanation pages without a question
+
+These pages return `"question": "NOT_A_QUESTION"` and are not added to the deck.
+
+## Multi-key parallel mode
+
+Adding multiple Gemini API keys enables parallel processing. The image list is divided into equal-sized packs — one pack per key — and each pack runs on a dedicated worker thread simultaneously.
+
+```
+120 images + 3 API keys
+→ Pack 1 (40 images) → Key 1 [thread 1]
+→ Pack 2 (40 images) → Key 2 [thread 2]
+→ Pack 3 (40 images) → Key 3 [thread 3]
+```
+
+This reduces total scan time proportionally to the number of keys. Each key rotates through models independently and handles its own rate-limit backoff.
+
+<Note>
+Keys are validated in parallel before the scan starts. Dead or invalid keys are excluded automatically, and the scan begins from a key that has had recovery time after validation.
+</Note>
+
+## Real-time log output
+
+The scanning UI streams live progress messages:
+
+```
+🚀 PDF Batch mode: 60 images → 2 batch(es) of up to 50 pages each
+── Batch 1/2: images 1–50 ──
+🔧 Merging 50 images into PDF...
+✔ PDF ready (2048KB)
+📤 Sending PDF batch 1/2 (50 pages, 2048KB) | Key 1 [...abcd1234] | Model: gemini-2.5-flash
+⏳ Waiting for response on batch 1/2...
+✅ Batch 1/2 done — 48/50 cards extracted
+⏱ Waiting 7.5s before next batch (rate limit buffer)...
+```
+
+## Scanning tips
+
+<AccordionGroup>
+  <Accordion title="Image quality matters">
+    Gemini reads the pixel data directly. Blurry, low-resolution, or heavily compressed images reduce extraction accuracy. Aim for at least 150 DPI for scanned documents.
+  </Accordion>
+  <Accordion title="Keep one question per image">
+    The batch-PDF mode assumes one question per page. If an image contains multiple questions, only the first will be reliably extracted.
+  </Accordion>
+  <Accordion title="Rate limits and key count">
+    The default safe rate is 8 requests per minute per key. With one key this means roughly 7.5 seconds between batches. Add more keys to speed up scanning proportionally.
+  </Accordion>
+  <Accordion title="Special characters and code snippets">
+    Gemini preserves code syntax, math formulas, Greek letters, and special symbols exactly as they appear. Indentation, operators (`==`, `!=`, `>=`), and arrows (`→`, `≥`) are retained in the output.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Study mode" icon="book-open" href="/features/study-mode">
+    Review your extracted deck with keyboard shortcuts and track mastery.
+  </Card>
+  <Card title="Quiz mode" icon="circle-check" href="/features/quiz-mode">
+    Practice with multiple-choice questions and save your progress.
+  </Card>
+</CardGroup>

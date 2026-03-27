@@ -1,0 +1,117 @@
+---
+title: "Cloud sync"
+description: "Sync your decks and quiz sessions across devices via Google Drive"
+---
+
+## Overview
+
+Cloud sync uses the Google Drive **AppData** folder to keep your decks and quiz sessions in sync across devices. The AppData folder is private to the app — it is hidden from the standard Google Drive UI and cannot be accessed by other applications or users.
+
+Sync is bidirectional and uses a Smart Merge algorithm that compares `updated_at` timestamps so the most recently modified version of each deck or session always wins, regardless of which device made the change.
+
+## What gets synced
+
+| File | Contents |
+|------|----------|
+| `decks.json` | All decks, cards, statuses, and notes |
+| `quiz_sessions.json` | All in-progress and completed quiz sessions |
+
+<Note>
+Image files are stored locally and are not uploaded to Drive. The sync only transfers JSON metadata. When a remote deck is pulled, local `image_path` values are injected back into the merged deck so image references are never broken.
+</Note>
+
+## Requirements
+
+- Signed in with a Google account (OAuth)
+- Internet connection (the app detects no-connectivity gracefully)
+- Google Drive API enabled (included in the official build; developers can supply their own `credentials.json`)
+
+## How to sync
+
+<Steps>
+  <Step title="Sign in with Google">
+    Open the app and click **Sign in with Google**. Complete the OAuth consent flow in your browser. Your token is stored in `token.json` locally and is excluded from Git.
+  </Step>
+  <Step title="Click Sync">
+    Press the **Sync** button in the desktop app toolbar. This triggers a full sync: decks first, then quiz sessions.
+  </Step>
+  <Step title="Merge runs automatically">
+    The Smart Merge algorithm compares local and remote data and produces a merged result without any user interaction required.
+  </Step>
+  <Step title="Changes are saved and uploaded">
+    The merged result is written to the local JSON files and uploaded back to the Drive AppData folder in a single pass.
+  </Step>
+</Steps>
+
+## Smart Merge algorithm
+
+The merge logic runs independently for decks and for quiz sessions. The steps below describe deck merging; session merging follows the same pattern.
+
+1. Download `decks.json` from Drive AppData
+2. Load `decks.json` from local storage
+3. For each deck that exists in **both** remote and local: compare `updated_at` timestamps — the newer version wins
+4. Decks that exist **only on remote** are added to the local store
+5. Decks that exist **only locally** are kept as-is
+6. Save the merged deck list locally (without bumping timestamps)
+7. Upload the merged deck list back to Drive AppData
+
+<Note>
+Timestamp comparison uses ISO 8601 string ordering (`"2026-03-15T10:00:00"` vs `"2026-03-16T09:00:00"`). No timezone conversion is performed — all timestamps are generated in local time on the device that made the change.
+</Note>
+
+## Image path preservation
+
+Image files are stored on the local device and are not synced to Drive. When the remote version of a deck is newer and wins the merge, the app re-injects local `image_path` values for matching cards:
+
+```
+For each card in the pulled remote deck:
+  If a local card with the same card_id has an image_path set:
+    → Copy the local image_path into the remote card
+```
+
+This ensures that cards keep their image references even after a remote update overwrites the card data.
+
+## Security
+
+- Synced files live in the Drive **AppData** scope — not visible in the standard Drive UI
+- OAuth credentials (`credentials.json`) and tokens (`token.json`) are excluded from Git
+- API keys and tokens are masked in the app UI
+- The official build ships with embedded credentials; developers can replace them with their own `credentials.json`
+
+<Warning>
+Never commit `credentials.json` or `token.json` to a public repository. These files grant full access to the associated Google account's AppData.
+</Warning>
+
+## Error handling
+
+| Condition | Behavior |
+|-----------|----------|
+| No internet connection | Sync is aborted with message "No network connection"; local data is unchanged |
+| Not signed in | Sync is aborted with message "Not signed in to Google Drive" |
+| Drive API error | Sync reports the HTTP status code (e.g., `403`, `500`) and stops |
+| Malformed remote JSON | Remote data is treated as empty; local data is kept and re-uploaded |
+
+## Frequently asked questions
+
+<AccordionGroup>
+  <Accordion title="Does sync delete decks?">
+    No. The merge only adds or updates decks based on timestamp. A deck present only on one device is never deleted — it is propagated to the other device on the next sync.
+  </Accordion>
+  <Accordion title="Can mobile devices sync too?">
+    Yes. The Android mobile app supports Google Drive sync via `expo-auth-session`. The same `decks.json` and `quiz_sessions.json` files in the AppData folder are used, so changes made on desktop are visible on mobile after syncing.
+  </Accordion>
+  <Accordion title="How do I revoke app access to my Drive?">
+    Go to your Google Account → Security → Third-party apps with account access, find the Flashcard AI app, and remove access. Delete `token.json` from the app data directory to force a new sign-in.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Study mode" icon="book-open" href="/features/study-mode">
+    Review your synced decks with keyboard shortcuts.
+  </Card>
+  <Card title="Export to Quizlet" icon="file-export" href="/features/export">
+    Export decks to a Quizlet-compatible text file.
+  </Card>
+</CardGroup>

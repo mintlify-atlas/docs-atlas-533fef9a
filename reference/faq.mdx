@@ -1,0 +1,69 @@
+---
+title: "Frequently asked questions"
+description: "Common questions about Flashcard AI"
+---
+
+<AccordionGroup>
+
+  <Accordion title="Is Flashcard AI free to use?">
+    The app is free and open source. You need a Google Gemini API key, which has a generous free tier. For large decks (hundreds of images), you may need multiple API keys or a paid quota plan. Visit [ai.google.dev](https://ai.google.dev) to get a free key.
+  </Accordion>
+
+  <Accordion title="What image formats are supported for scanning?">
+    JPG, JPEG, PNG, WEBP, and BMP images are supported. MP4 and AVI video files are also supported — the desktop app extracts frames from the video before sending them to Gemini.
+  </Accordion>
+
+  <Accordion title="Can I use Flashcard AI offline?">
+    Yes, for studying and quizzing. All decks are stored locally in `decks.json`. Scanning requires an internet connection to reach the Gemini API. Cloud sync requires internet and a Google login, but all data is stored locally first and sync is optional.
+  </Accordion>
+
+  <Accordion title="How do I share a deck with another person?">
+    You can share your `decks.json` file directly — the other person can import it in the desktop app or on mobile. Alternatively, export the deck to Quizlet format (`.txt`) from the desktop app and share that file. See [Export to Quizlet](/features/export) for details.
+  </Accordion>
+
+  <Accordion title="Some cards have a warning about 'AI inferred' answers. What does that mean?">
+    When Gemini cannot find an explicit visual clue in the image (highlighted answer, checkmark, filled bubble, etc.), it uses its knowledge to reason the most likely answer and marks the card with `inferred: true`. These cards get an automatic warning note. Always review AI-inferred cards before studying.
+  </Accordion>
+
+  <Accordion title="Pages like title slides or blank pages don't produce a card. Is that normal?">
+    Yes. Images that don't contain a recognizable question are skipped and logged as `NOT_A_QUESTION`. Title pages, logo slides, blank pages, and diagram-only pages are filtered out automatically. No action is needed on your part.
+  </Accordion>
+
+  <Accordion title="How many images can I scan at once?">
+    There is no hard limit. Images are batched into PDFs of up to 50 pages each and sent to Gemini as batch requests. For very large sets (500+ images), use parallel scan mode with multiple API keys — each key processes a separate pack of images simultaneously.
+  </Accordion>
+
+  <Accordion title="Why did scanning stop with a 429 error?">
+    This is a Gemini API rate limit response. The app automatically waits and retries — it will recover on its own. Adding more API keys in Settings distributes the load and reduces wait time significantly. See [Gemini API keys](/configuration/gemini-api-keys) for guidance on adding keys.
+  </Accordion>
+
+  <Accordion title="What happens if I edit a deck on both desktop and phone before syncing?">
+    Smart Merge compares the `updated_at` timestamp for each deck independently. The version with the newer timestamp wins. Edits on either device are safe as long as you do not modify the same deck on both devices between syncs.
+  </Accordion>
+
+  <Accordion title="Will syncing overwrite my local images?">
+    No. The Google Drive sync transfers only question and answer data (`decks.json`). Local `image_path` values are preserved on each device and are never overwritten by sync. Images themselves are never uploaded to Drive.
+  </Accordion>
+
+  <Accordion title="Can I use the same Google account on multiple devices?">
+    Yes — that is the intended workflow. Sign in with the same Google account on all devices and use the Sync button to keep decks up to date across all of them.
+  </Accordion>
+
+  <Accordion title="Which Quizlet export format should I use?">
+    For most cases, use **full** — it includes the question, all answer options, and the correct answer text. Use **safe** if your questions or options contain special characters (tabs, newlines) that would break Quizlet's standard import parser. See [Export to Quizlet](/features/export) for a full format comparison.
+  </Accordion>
+
+  <Accordion title="How do I import an exported file into Quizlet?">
+    In Quizlet: **Create** → **Import** → paste the file content or upload the `.txt` file. Set the term/definition separator to match the format you chose. For the **safe** format, set the term/definition separator to `{[(DapAn)]}` and the card separator to `{[(CauHoi)]}`.
+  </Accordion>
+
+</AccordionGroup>
+
+<CardGroup cols={2}>
+  <Card title="Troubleshooting" icon="wrench" href="/reference/troubleshooting">
+    Solutions for common errors and issues
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/gemini-api-keys">
+    Set up API keys and Google Drive sync
+  </Card>
+</CardGroup>

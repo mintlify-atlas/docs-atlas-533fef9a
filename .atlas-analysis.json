@@ -1,0 +1,105 @@
+{
+  "projectType": "saas",
+  "projectName": "Flashcard AI",
+  "projectDescription": "A multi-platform learning ecosystem that uses Google Gemini AI to automatically extract flashcards and quiz questions from images, PDFs, and videos, with cross-device sync via Google Drive.",
+  "theme": "almond",
+  "primaryColor": "#94cb04",
+  "lightColor": "#545454",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart-desktop",
+              "quickstart-mobile"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/ai-scanning",
+              "features/study-mode",
+              "features/quiz-mode",
+              "features/cloud-sync",
+              "features/export"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/gemini-api-keys",
+              "configuration/google-drive",
+              "configuration/data-storage"
+            ]
+          },
+          {
+            "group": "Building & Deploying",
+            "pages": [
+              "building/desktop-dotnet",
+              "building/desktop-python",
+              "building/mobile-android"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "Data Model",
+            "pages": [
+              "reference/flashcard",
+              "reference/deck",
+              "reference/quiz-session"
+            ]
+          },
+          {
+            "group": "Services",
+            "pages": [
+              "reference/gemini-service",
+              "reference/sync-service",
+              "reference/export-service",
+              "reference/dedup-service"
+            ]
+          },
+          {
+            "group": "FAQ & Troubleshooting",
+            "pages": [
+              "reference/faq",
+              "reference/troubleshooting"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "AI-powered OCR extraction of flashcards from images, PDFs, and video files using Google Gemini",
+    "Multi-key Gemini API rotation with parallel processing and automatic rate-limit handling",
+    "Smart Merge cloud sync via Google Drive AppData (newer updated_at wins)",
+    "Study mode with keyboard shortcuts, self-scoring, and undo functionality",
+    "Quiz mode with single/multiple-choice questions, session save and resume",
+    "Quizlet export in four formats: simple, full, compact, and safe",
+    "Duplicate question detection using n-gram shingling and Jaccard similarity",
+    "Cross-platform: Windows desktop (.NET 8 WPF), Python desktop (CustomTkinter), Android mobile (React Native)"
+  ],
+  "publicApiSurface": [
+    "GeminiService.process_image(image_path, max_retries) -> Optional[Flashcard]",
+    "GeminiService.process_images_as_pdf_batches(image_paths, batch_size, ...) -> List[Flashcard]",
+    "GeminiService.process_images_parallel(image_paths, keys, ...) -> List[Flashcard]",
+    "GeminiService.validate_keys_parallel(keys, on_log) -> List[str]",
+    "SyncService.perform_full_sync() -> Tuple[bool, str]",
+    "SyncService.sync_decks() -> Tuple[bool, str]",
+    "export_to_quizlet(deck, output_path, format_type) -> str",
+    "find_duplicate_questions(cards, threshold) -> List[Tuple[int, int, float]]",
+    "Flashcard.to_dict() / Flashcard.from_dict(data)",
+    "Deck.to_dict() / Deck.from_dict(data)",
+    "QuizSession.new_for_deck(deck) -> QuizSession",
+    "Flashcard.to_quizlet_row(format_type) -> str"
+  ]
+}
